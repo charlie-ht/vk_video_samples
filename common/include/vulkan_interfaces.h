@@ -14,6 +14,7 @@
 * limitations under the License.
 */
 
+#ifndef DE_BUILD_VIDEO
 #ifdef VK_API_USE_DRIVER_REPO
 // If using the local driver repo with Vulkan APIs
 #include "vulkan/vulkannv.h"
@@ -24,3 +25,10 @@
 #endif
 #include "vulkan/vulkan.h"
 #endif
+
+#else
+
+#include "vkDefs.hpp"
+using namespace vk;
+
+#endif // !defined(_VKDEFS_H)
