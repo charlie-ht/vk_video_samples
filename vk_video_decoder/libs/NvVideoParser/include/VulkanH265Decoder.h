@@ -270,7 +270,7 @@ struct hevc_seq_param_s : public StdVideoPictureParametersSet, public StdVideoH2
         return VK_ERROR_OUT_OF_HOST_MEMORY;
     }
 
-    static bool UpdateStdVui(const hevc_seq_param_s* pSps, StdVideoH265SequenceParameterSetVui* pStdVui)
+    static bool UpdateStdVui(const hevc_seq_param_s* pSps, StdVideoH265SequenceParameterSetVui* /*pStdVui*/)
     {
         if (pSps->flags.vui_parameters_present_flag) {
 
