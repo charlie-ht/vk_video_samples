@@ -21,7 +21,10 @@
 #include "VkVideoCore/VkVideoRefCountBase.h"
 #include "vkvideo_parser/StdVideoPictureParametersSet.h"
 #include "VulkanBitstreamBuffer.h"
-#include "vk_video/vulkan_video_codecs_common.h"
+
+#ifndef DE_BUILD_VIDEO
+    #include "vk_video/vulkan_video_codecs_common.h"
+#endif
 
 #define NV_VULKAN_VIDEO_PARSER_API_VERSION_0_9_9 VK_MAKE_VIDEO_STD_VERSION(0, 9, 9)
 
@@ -645,7 +648,7 @@ public:
         const uint8_t* pbData, size_t cbData)
         = 0; // Called for custom NAL parsing (not required)
     virtual uint32_t GetDecodeCaps() { return 0; } // NVD_CAPS_XXX
-    virtual int32_t GetOperatingPoint(VkParserOperatingPointInfo* pOPInfo)
+    virtual int32_t GetOperatingPoint(VkParserOperatingPointInfo*)
     {
         return 0;
     } // called from sequence header of av1 scalable video streams
