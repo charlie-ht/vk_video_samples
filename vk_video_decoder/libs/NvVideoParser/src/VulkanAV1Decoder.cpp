@@ -512,7 +512,6 @@ bool VulkanAV1Decoder::ReadObuHeader(const uint8_t* pData, uint32_t datasize, AV
 bool VulkanAV1Decoder::ParseOBUHeaderAndSize(const uint8_t* data, uint32_t datasize, AV1ObuHeader* hdr)
 {
     uint32_t obu_size = 0, length_field_size = 0;
-    const uint8_t* local = data;
 
     if (datasize == 0) {
         return false;
@@ -922,11 +921,8 @@ int VulkanAV1Decoder::SetupFrameSizeWithRefs()
 
     uint32_t tmp;// index;
     int32_t found, i;
-    uint32_t prev_width, prev_height;
 
     found = 0;
-    prev_width = m_dwWidth;
-    prev_height = m_dwHeight;
 
     for (i = 0; i < REFS_PER_FRAME; ++i) {
         tmp = u(1);
@@ -1294,7 +1290,6 @@ static const int av1_seg_feature_data_max[MAX_SEGMENTS] = { 255, 63, 63, 63, 63,
 
 void VulkanAV1Decoder::DecodeSegmentationData()
 {
-    av1_seq_param_s *const sps = &m_sps;
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     pic_info->segmentation_update_map = 0;
@@ -1329,7 +1324,6 @@ void VulkanAV1Decoder::DecodeSegmentationData()
     if (pic_info->segmentation_update_data) {
         for (int i = 0; i < MAX_SEGMENTS; i++) {
             for (int j = 0; j < MAX_SEG_LVL; j++) {
-                int data = 0;
                 int feature_value = 0;
                 pic_info->segmentation_feature_enable[i][j] = u(1);
                 if (pic_info->segmentation_feature_enable[i][j]) {
@@ -1519,9 +1513,7 @@ int VulkanAV1Decoder::GetRelativeDist1(int a, int b)
 //follow spec 7.8
 void VulkanAV1Decoder::SetFrameRefs(int last_frame_idx, int gold_frame_idx)
 {
-
     av1_seq_param_s *const sps = &m_sps;
-    VkParserAv1PictureData* pic_info = &m_PicData;
 
     assert(sps->enable_order_hint);
     assert(sps->order_hint_bits_minus_1 >= 0);
@@ -1938,7 +1930,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
         pic_info->error_resilient_mode && sps->enable_order_hint) {
         for (int i = 0; i < NUM_REF_FRAMES; i++) {
             // ref_order_hint[i]
-            unsigned int offset = u(sps->order_hint_bits_minus_1 + 1);
+            int offset = u(sps->order_hint_bits_minus_1 + 1);
             int buf_idx = ref_frame_map[i];
             // assert(buf_idx < FRAME_BUFFERS);
             if (buf_idx == -1 || offset != RefOrderHint[buf_idx]) {
@@ -2203,13 +2195,13 @@ bool IsObuInCurrentOperatingPoint(int  current_operating_point, AV1ObuHeader *hd
         ((current_operating_point >> (hdr->spatial_id + 8)) & 0x1)) {
         return true;
     }
-       
+
     return false;
 }
 
 void VulkanAV1Decoder::CalcTileOffsets(const uint8_t *base, int offset, int tile_start, int tile_end, int len)
 {
-    VkParserAv1PictureData* pic_info = &m_PicData;
+//    VkParserAv1PictureData* pic_info = &m_PicData;
     for (int tile_id = tile_start; tile_id <= tile_end; tile_id++) {
         if (tile_id == tile_end) {
             m_pSliceOffsets[2 * tile_id] = offset;
@@ -2433,10 +2425,6 @@ bool VulkanAV1Decoder::ParseByteStream(const VkParserBitstreamPacket* pck, size_
     const uint8_t* pdataStart = (pck->nDataLength > 0) ? pck->pByteStream : nullptr;
     const uint8_t* pdataEnd = (pck->nDataLength > 0) ? pck->pByteStream + pck->nDataLength : nullptr;
     int datasize = (int)pck->nDataLength;
-
-    const uint8_t* pBitStream = pdataStart;
-    unsigned int bitStreamSize = (unsigned int)pck->nDataLength;
-    unsigned int parsedBytes = 0;
 
     if (pParsedBytes) {
         *pParsedBytes = 0;
