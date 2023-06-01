@@ -2426,7 +2426,7 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
     return true;
 }
 
-bool VulkanAV1Decoder::ParseByteStream(const VkParserBitstreamPacket* pck, int* pParsedBytes)
+bool VulkanAV1Decoder::ParseByteStream(const VkParserBitstreamPacket* pck, size_t* pParsedBytes)
 {
     m_bDisableFGS = (pck->bPartialParsing == 0);
 
@@ -2514,9 +2514,13 @@ bool VulkanAV1Decoder::ParseByteStream(const VkParserBitstreamPacket* pck, int* 
             m_llNaluStartLocation = m_llFrameStartLocation = m_llParsedBytes;
             m_llParsedBytes += frame_size;
         }
-        if (!ParseOneFrame(pdataStart, frame_size, pck, pParsedBytes)) {
+        int parsedBytes = 0;
+        if (!ParseOneFrame(pdataStart, frame_size, pck, &parsedBytes)) {
             return false;
         }
+
+		if (pParsedBytes)
+			*pParsedBytes = parsedBytes;
 
         pdataStart += frame_size;
         // Allow extra zero bytes after the frame end
