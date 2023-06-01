@@ -554,7 +554,7 @@ public:
     VulkanAV1Decoder(VkVideoCodecOperationFlagBitsKHR std);
     virtual ~VulkanAV1Decoder();
 
-    bool                    ParseByteStream(const VkParserBitstreamPacket* pck, int32_t* pParsedBytes);
+    bool                    ParseByteStream(const VkParserBitstreamPacket* pck, size_t* pParsedBytes) override;
 
 protected:
     bool                    IsPictureBoundary(int32_t)                          { return true; };
