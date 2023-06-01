@@ -25,19 +25,7 @@
 #include "vulkan/vulkan.h"
 #endif
 
-#ifndef VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR
-// Very succinct definition of AV1 types. This needs to be converted to using the STD/KHR headers.
-#define VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_API_VERSION_0_9_0      VK_MAKE_VIDEO_STD_VERSION(0, 9, 0)
-#define VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_SPEC_VERSION           VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_API_VERSION_0_9_0
-#define VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_EXTENSION_NAME         "VK_STD_vulkan_video_codec_av1_decode"
-// Please update these to the correct version/value.
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR         ((VkStructureType)1000509000)
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_KHR         ((VkStructureType)1000509001)
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_CREATE_INFO_KHR ((VkStructureType)1000509002)
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_ADD_INFO_KHR ((VkStructureType)1000509003)
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PICTURE_INFO_KHR         ((VkStructureType)1000509004)
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_DPB_SLOT_INFO_KHR        ((VkStructureType)1000509005)
-#define VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR                 ((VkVideoCodecOperationFlagBitsKHR)0x00000004)
+#include "vk_video/vulkan_video_codec_av1std.h"
+#include "vk_video/vulkan_video_codec_av1std_decode.h"
 
 #define VK_VIDEO_CODEC_OPERATION_DECODE_VP9_BIT_KHR                 ((VkVideoCodecOperationFlagBitsKHR)0x00000005)
-#endif

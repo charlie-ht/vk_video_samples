@@ -48,9 +48,9 @@ VkResult VulkanVideoSession::Create(const VulkanDeviceContext* vkDevCtx,
     createInfo.pVideoProfile = pVideoProfile->GetProfile();
     createInfo.queueFamilyIndex = videoQueueFamily;
     createInfo.pictureFormat = pictureFormat;
-    createInfo.maxCodedExtent = maxCodedExtent;
-    createInfo.maxDpbSlots = maxDpbSlots;
-    createInfo.maxActiveReferencePictures = maxActiveReferencePictures;
+    createInfo.maxCodedExtent = (VkExtent2D){8192, 4352}; // maxCodedExtent; @ffmpeg
+    createInfo.maxDpbSlots =  9; // maxDpbSlots; // @ffmpeg
+    createInfo.maxActiveReferencePictures = 7; // maxActiveReferencePictures; // @ffmpeg
     createInfo.referencePictureFormat = referencePicturesFormat;
 
     switch ((int32_t)pVideoProfile->GetCodecType()) {
@@ -61,7 +61,7 @@ VkResult VulkanVideoSession::Create(const VulkanDeviceContext* vkDevCtx,
         createInfo.pStdHeaderVersion = &h265DecodeStdExtensionVersion;
         break;
 #ifdef ENABLE_AV1_DECODER
-    case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR:
+    case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA:
         createInfo.pStdHeaderVersion = &av1StdExtensionVersion;
         break;
 #endif
@@ -149,7 +149,3 @@ VkResult VulkanVideoSession::Create(const VulkanDeviceContext* vkDevCtx,
 
     return result;
 }
-
-
-
-

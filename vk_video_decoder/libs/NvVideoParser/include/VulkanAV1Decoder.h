@@ -17,7 +17,10 @@
 #ifndef _VULKANAV1DECODER_H_
 #define _VULKANAV1_DECOER_H_
 
+#include "vkvideo_parser/StdVideoPictureParametersSet.h"
 #include "VulkanVideoDecoder.h"
+
+#include <array>
 
 #ifdef ENABLE_AV1_DECODER
 
@@ -57,9 +60,10 @@
 // The minimum tile width or height is fixed at one superblock
 #define MAX_TILE_WIDTH              (4096)          // maximum widht of a tile in units of luma samples
 #define MAX_TILE_AREA               (4096 * 2304)   // maximum area of a tile in units of luma samples
-#define MAX_TILE_ROWS               64              // maximum number of tile rows
-#define MAX_TILE_COLS               64              // maximum number of tile columns
+#define MAX_TILE_ROWS               64u              // maximum number of tile rows
+#define MAX_TILE_COLS               64u              // maximum number of tile columns
 #define MAX_TILES                   512             // maximum number of tiles
+#define MIN_TILE_SIZE_BYTES         1
 
 #define MAX_SEGMENTS                8               // number of segments allowed in segmentation map
 #define MAX_SEG_LVL                 8               // number of segment features
@@ -77,6 +81,10 @@
 #define SELECT_SCREEN_CONTENT_TOOLS     2   // value that indicates the allow_screen_content_tools syntax element is coded
 #define SELECT_INTEGER_MV               2   // value that indicates the force_integer_mv syntax element is coded
 
+#define RESTORE_NONE                    0
+#define RESTORE_WIENER                  1
+#define RESTORE_SGRPROJ                 2
+#define RESTORE_SWITCHABLE              3
 
 typedef enum _AV1_SEGLEVEL_FEATURES
 {
@@ -339,60 +347,92 @@ typedef struct _AV1ObuHeader
 } AV1ObuHeader;
 
 // Sequence header structure.
-typedef struct _av1_seq_param_s 
+struct av1_seq_param_s : public StdVideoPictureParametersSet, public StdVideoAV1MESASequenceHeader
 {
-    AV1_PROFILE     profile;                        // features that can be used like bit-depth, monochrome and chroma subsampling
-    bool            still_picture;                  // sequence contains only one coded frame
-    bool            reduced_still_picture_hdr;      // if still_picture=1, this specifies that the syntax elements not needed by still picture are omitted.
-    uint32_t        max_frame_width;
-    uint32_t        max_frame_height;
-    uint8_t         num_bits_width;
-    uint8_t         num_bits_height;
-    bool            frame_id_numbers_present;
-    uint8_t         frame_id_length;
-    uint8_t         delta_frame_id_length;
-    uint8_t         use_128x128_superblock;     // Size of the superblock 0: 64x64, 1: 128x128
-    int32_t         order_hint_bits_minus_1;
-    int32_t         force_screen_content_tools; // 0 - force off
+    static const char* m_refClassId;
+    AV1_PROFILE     profile;                        // should use StdVideoAV1MESASequenceHeader.seq_profile // features that can be used like bit-depth, monochrome and chroma subsampling
+    uint8_t         frame_id_length{};  // length minus _2 ...
+    uint8_t         delta_frame_id_length{};
+    int32_t         force_screen_content_tools{}; // 0 - force off
                                                 // 1 - force on
                                                 // 2 - adaptive
-    int32_t         force_integer_mv;           // 0 - Not to force. MV can be in 1/4 or 1/8
+    int32_t         force_integer_mv{};           // 0 - Not to force. MV can be in 1/4 or 1/8
                                                 // 1 - force to integer
                                                 // 2 - adaptive
-    bool            enable_filter_intra;
-    bool            enable_intra_edge_filter;
-    bool            enable_interintra_compound;
-    bool            enable_masked_compound;
-    bool            enable_dual_filter;
-    bool            enable_order_hint;
-    bool            enable_jnt_comp;
-    bool            enable_ref_frame_mvs;
-    bool            enable_warped_motion;
-    bool            enable_superres;
-    bool            enable_cdef;
-    bool            enable_restoration;
-
     // Operating point info.
-    int32_t         operating_points_cnt_minus_1;
-    int32_t         operating_point_idc[MAX_NUM_OPERATING_POINTS];  // specifies which spatial and temporal layers should be decoded
-    bool            display_model_info_present;
-    bool            decoder_model_info_present;
-    AV1_LEVEL       level[MAX_NUM_OPERATING_POINTS];                // resolution, bitrate etc
-    uint8_t         tier[MAX_NUM_OPERATING_POINTS];
+    int32_t         operating_points_cnt_minus_1{};
+    int32_t         operating_point_idc[MAX_NUM_OPERATING_POINTS]{};  // specifies which spatial and temporal layers should be decoded
+    bool            display_model_info_present{};
+    bool            decoder_model_info_present{};
+    AV1_LEVEL       level[MAX_NUM_OPERATING_POINTS]{};                // resolution, bitrate etc
+    uint8_t         tier[MAX_NUM_OPERATING_POINTS]{};
 
-    uint8_t         bit_depth;
-    bool            monochrome;
-    uint32_t        color_primaries;
-    uint32_t        transfer_characteristics;
-    uint32_t        matrix_coefficients;
-    int32_t         color_range;
-    int32_t         subsampling_x;
-    int32_t         subsampling_y;
-    uint32_t        chroma_sample_position;
-    bool            separate_uv_delta_q;
-    bool            film_grain_params_present;
-} av1_seq_param_s;
+    uint32_t        color_primaries{};
+    uint32_t        transfer_characteristics{};
+    uint32_t        matrix_coefficients{};
+    uint32_t        chroma_sample_position{};
 
+    VkSharedBaseObj<VkVideoRefCountBase> client;
+
+    virtual int32_t GetVpsId(bool& isVps) const {
+        isVps = false;
+        return -1;
+    }
+
+    virtual int32_t GetSpsId(bool& isSps) const {
+        isSps = false;
+        return -1;
+    }
+
+    virtual int32_t GetPpsId(bool& isPps) const {
+        isPps = false;
+        return -1;
+    }
+
+    virtual int32_t GetAv1SpsId(bool& isSps) const {
+        isSps = true;
+        return 0; // @review: what is the equivalent of parameter_set_id for AV1?
+    }
+
+    const StdVideoAV1MESASequenceHeader*    GetStdAV1Sps() const override { return this; }
+
+    virtual const char* GetRefClassId() const { return m_refClassId; }
+
+    uint64_t SetSequenceCount(uint64_t updateSequenceCount) {
+        assert(updateSequenceCount <= std::numeric_limits<uint32_t>::max());
+        m_updateSequenceCount = (uint32_t)updateSequenceCount;
+        return m_updateSequenceCount;
+    }
+
+    virtual bool GetClientObject(VkSharedBaseObj<VkVideoRefCountBase>& clientObject) const
+    {
+        clientObject = client;
+        return !!clientObject;
+    }
+
+    explicit av1_seq_param_s(uint64_t updateSequenceCount)
+    : StdVideoPictureParametersSet(TYPE_AV1_SPS, AV1_SPS_TYPE, m_refClassId, updateSequenceCount)
+    , StdVideoAV1MESASequenceHeader()
+    , profile(AV1_PROFILE_0)
+    {
+    }
+
+    ~av1_seq_param_s() override {
+        client = nullptr;
+    }
+
+    static VkResult Create(uint64_t updateSequenceCount,
+                           VkSharedBaseObj<av1_seq_param_s>& spsAV1PictureParametersSet)
+    {
+        VkSharedBaseObj<av1_seq_param_s> av1PictureParametersSet(
+            new av1_seq_param_s(updateSequenceCount));
+        if (av1PictureParametersSet) {
+            spsAV1PictureParametersSet = av1PictureParametersSet;
+            return VK_SUCCESS;
+        }
+        return VK_ERROR_OUT_OF_HOST_MEMORY;
+    }
+};
 
 typedef struct _av1_timing_info_t
 {
@@ -487,10 +527,11 @@ typedef struct _av1_ref_frames_s
 class VulkanAV1Decoder : public VulkanVideoDecoder
 {
 protected:
-    av1_seq_param_s             m_sps;
+	VkSharedBaseObj<av1_seq_param_s> m_sps; // active sps
+//    av1_seq_param_s             m_sps;
     VkParserAv1PictureData      m_PicData;
     // common params
-    int32_t                     temporal_id; 
+    int32_t                     temporal_id;
     int32_t                     spatial_id;
     bool                        m_bSPSReceived;
     bool                        m_bSPSChanged;
@@ -506,8 +547,8 @@ protected:
     uint8_t                     all_lossless;
 
     // frame header
-    uint32_t                    m_dwWidth;
-    uint32_t                    m_dwHeight;
+    uint16_t                    m_dwWidth;
+    uint16_t                    m_dwHeight;
     int32_t                     render_width;
     int32_t                     render_height;
 
@@ -549,7 +590,7 @@ protected:
     VkPicIf*                    m_pOutFrame[MAX_NUM_SPATIAL_LAYERS];
     bool                        m_showableFrame[MAX_NUM_SPATIAL_LAYERS];
 
-    int                        m_pSliceOffsets[512];
+    std::array<int, 512>        m_pSliceOffsets;
 public:
     VulkanAV1Decoder(VkVideoCodecOperationFlagBitsKHR std);
     virtual ~VulkanAV1Decoder();
@@ -560,12 +601,53 @@ protected:
     bool                    IsPictureBoundary(int32_t)                          { return true; };
     int32_t                 ParseNalUnit()                                  { return NALU_UNKNOWN; };
     bool                    DecodePicture(VkParserPictureData *pnvdp)            { return false; };
-    bool                    end_of_picture(const uint8_t* pdataIn, uint32_t dataSize, uint8_t* pbSideDataIn = NULL, uint32_t sideDataSize = 0);
+    bool                    end_of_picture(const uint8_t* pdataIn, uint32_t dataSize, uint32_t dataOffset, uint8_t* pbSideDataIn = NULL, uint32_t sideDataSize = 0);
     void                    InitParser();
     bool                    BeginPicture(VkParserPictureData *pnvpd);
     void                    lEndPicture(VkPicIf* pDispPic, bool bEvict);
     bool                    ParseOneFrame(const uint8_t* pdatain, int32_t datasize, const VkParserBitstreamPacket* pck, int* pParsedBytes);
     void                    EndOfStream();
+
+    uint32_t read_u16_le(const void *vmem) {
+        uint32_t val;
+        const uint8_t *mem = (const uint8_t *)vmem;
+
+        val = mem[1] << 8;
+        val |= mem[0];
+        return val;
+    }
+
+    uint32_t read_u24_le(const void *vmem) {
+        uint32_t val;
+        const uint8_t *mem = (const uint8_t *)vmem;
+
+        val = mem[2] << 16;
+        val |= mem[1] << 8;
+        val |= mem[0];
+        return val;
+    }
+
+    uint32_t read_u32_le(const void *vmem) {
+        uint32_t val;
+        const uint8_t *mem = (const uint8_t *)vmem;
+
+        val = ((uint32_t)mem[3]) << 24;
+        val |= mem[2] << 16;
+        val |= mem[1] << 8;
+        val |= mem[0];
+        return val;
+    }
+
+    size_t read_tile_group_size(const uint8_t* src, int size)
+    {
+          switch (size) {
+            case 1: return src[0];
+            case 2: return read_u16_le(src);
+            case 3: return read_u24_le(src);
+            case 4: return read_u32_le(src);
+            default: assert(0 && "Invalid size"); return -1;
+        }
+    }
 
     bool                    ParseOBUHeaderAndSize(const uint8_t* pData, uint32_t datasize, AV1ObuHeader* hdr);
     bool                    ReadObuSize(const uint8_t* pData, uint32_t datasize, uint32_t* obu_size, uint32_t* length_feild_size);
@@ -584,7 +666,7 @@ protected:
     int32_t                 SetupFrameSizeWithRefs();
 
     bool                    DecodeTileInfo();
-    void                    CalcTileOffsets(const uint8_t *base, int offset, int tile_start, int tile_end, int len);
+    void                    CalcTileOffsets(const uint8_t *base, const uint8_t *end, int offset, int tile_start, int tile_end);
     inline int32_t          ReadSignedBits(uint32_t bits);
     inline int32_t          ReadDeltaQ(uint32_t bits);
     uint32_t                SwGetUniform(uint32_t max_value);

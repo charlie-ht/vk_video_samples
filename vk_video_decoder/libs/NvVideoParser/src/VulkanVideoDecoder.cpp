@@ -911,7 +911,7 @@ VkResult CreateVulkanVideoDecodeParser(VkVideoCodecOperationFlagBitsKHR videoCod
     }
         break;
 #ifdef ENABLE_AV1_DECODER
-    case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR:
+    case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA:
         if ((pStdExtensionVersion == nullptr) ||
                 (0 != strcmp(pStdExtensionVersion->extensionName, VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_EXTENSION_NAME)) ||
                 (pStdExtensionVersion->specVersion != VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_SPEC_VERSION)) {

@@ -37,10 +37,15 @@ public:
         videoCapabilities       =       VkVideoCapabilitiesKHR { VK_STRUCTURE_TYPE_VIDEO_CAPABILITIES_KHR, &videoDecodeCapabilities };
         VkVideoDecodeH264CapabilitiesKHR h264Capabilities    = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_CAPABILITIES_KHR, nullptr };
         VkVideoDecodeH265CapabilitiesKHR h265Capabilities    = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR, nullptr };
+        VkVideoDecodeAV1CapabilitiesMESA av1Capabilities{};
+        av1Capabilities.sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_MESA;
+
         if (videoCodec == VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) {
             videoDecodeCapabilities.pNext = &h264Capabilities;
         } else if (videoCodec == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) {
             videoDecodeCapabilities.pNext = &h265Capabilities;
+        } else if (videoCodec == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA) {
+            videoDecodeCapabilities.pNext = &av1Capabilities;
         } else {
             assert(!"Unsupported codec");
             return VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR;
@@ -115,6 +120,7 @@ public:
         assert(pVideoDecodeCapabilities->sType == VK_STRUCTURE_TYPE_VIDEO_DECODE_CAPABILITIES_KHR);
         VkVideoDecodeH264CapabilitiesKHR* pH264Capabilities = nullptr;
         VkVideoDecodeH265CapabilitiesKHR* pH265Capabilities = nullptr;
+        VkVideoDecodeAV1CapabilitiesMESA* pAV1Capabilities = nullptr;
 
         if (videoProfile.GetCodecType() == VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) {
             assert(pVideoDecodeCapabilities->pNext);
@@ -124,6 +130,10 @@ public:
             assert(pVideoDecodeCapabilities->pNext);
             pH265Capabilities = (VkVideoDecodeH265CapabilitiesKHR*)pVideoDecodeCapabilities->pNext;
             assert(pH265Capabilities->sType ==  VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_CAPABILITIES_KHR);
+        } else if (videoProfile.GetCodecType() == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA) {
+            assert(pVideoDecodeCapabilities->pNext);
+            pAV1Capabilities = (VkVideoDecodeAV1CapabilitiesMESA*)pVideoDecodeCapabilities->pNext;
+            assert(pAV1Capabilities->sType ==  VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_MESA);
         } else {
             assert(!"Unsupported codec");
             return VK_ERROR_FORMAT_NOT_SUPPORTED;

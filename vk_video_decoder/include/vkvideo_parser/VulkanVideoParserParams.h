@@ -40,6 +40,8 @@ struct VkParserPerFrameDecodeParameters {
     const StdVideoPictureParametersSet*     pStdSps;
     // PPS
     const StdVideoPictureParametersSet*     pStdPps;
+    // AV1 sequence parameter set
+    const StdVideoPictureParametersSet*     pStdAv1Sps;
 
     // inlined picture parameters that should be inserted to VkVideoBeginCodingInfo
     const void* beginCodingInfoPictureParametersExt;
@@ -48,13 +50,15 @@ struct VkParserPerFrameDecodeParameters {
     uint32_t firstSliceIndex;
     uint32_t numSlices;
     size_t bitstreamDataOffset; // bitstream data offset in bitstreamData buffer
-    size_t bitstreamDataLen;   /** Number of bytes in bitstream data buffer                  */
-    VkSharedBaseObj<VulkanBitstreamBuffer> bitstreamData; /** bitstream data for this picture (slice-layer) */
+    size_t bitstreamDataLen;   // Number of bytes in bitstream data buffer
+    VkSharedBaseObj<VulkanBitstreamBuffer> bitstreamData; // bitstream data for this picture (slice-layer)
     VkVideoDecodeInfoKHR decodeFrameInfo;
     VkVideoPictureResourceInfoKHR dpbSetupPictureResource;
     int32_t numGopReferenceSlots;
     int8_t pGopReferenceImagesIndexes[MAX_DPB_REF_AND_SETUP_SLOTS];
     VkVideoPictureResourceInfoKHR pictureResources[MAX_DPB_REF_AND_SETUP_SLOTS];
+
+    bool isAV1;
 };
 
 struct VkParserFrameSyncinfo {

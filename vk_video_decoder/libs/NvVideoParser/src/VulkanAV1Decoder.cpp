@@ -27,13 +27,14 @@
 
 #ifdef ENABLE_AV1_DECODER
 
+#define DEBUG_PARSER 0
+
 #include "VulkanAV1Decoder.h"
 
 // constructor
 VulkanAV1Decoder::VulkanAV1Decoder(VkVideoCodecOperationFlagBitsKHR std)
     : VulkanVideoDecoder(std)
 {
-    memset(&m_sps, 0, sizeof(m_sps));
     memset(&m_PicData, 0, sizeof(m_PicData));
     m_pCurrPic = nullptr;
     m_pFGSPic = nullptr;
@@ -196,14 +197,30 @@ void VulkanAV1Decoder::AddBuffertoDispQueue(VkPicIf* pDispPic)
         ndx = (ndx + 1) % MAX_QUEUED_PTS;
     }
 }
-
+#include <stdio.h>
 // kick-off decoding
-bool VulkanAV1Decoder::end_of_picture(const uint8_t* pdataIn, uint32_t dataSize, uint8_t* pbSideDataIn, uint32_t sideDataSize)
+bool VulkanAV1Decoder::end_of_picture(const uint8_t* pdataIn, uint32_t dataSize, uint32_t dataOffset, uint8_t* pbSideDataIn, uint32_t sideDataSize)
 {
     *m_pVkPictureData = VkParserPictureData();
     m_pVkPictureData->numSlices = m_PicData.num_tile_cols * m_PicData.num_tile_rows;  // set number of tiles as AV1 doesn't have slice concept
-    m_pVkPictureData->bitstreamDataLen = dataSize;
-    //m_pVkPictureData->bitstreamData(const_cast<uint8_t*>(pdataIn));
+    
+    m_pVkPictureData->bitstreamDataLen = dataSize + dataOffset;
+    m_pVkPictureData->bitstreamData = m_bitstreamData.GetBitstreamBuffer();
+    m_pVkPictureData->bitstreamDataOffset = 0;
+
+    // Dump the bistream for debugging purposes
+#if DEBUG_PARSER
+    if (false) {
+        VkDeviceSize bleh;
+        const uint8_t* ptr = m_pVkPictureData->bitstreamData->GetReadOnlyDataPtr(0, bleh);
+        printf(";;;; size (%d) %d\n", dataSize, m_pSliceOffsets[1]);
+        for (int i = m_pSliceOffsets[0]; i < m_pSliceOffsets[0]+m_pSliceOffsets[1]; i++) {
+            printf(";;;; %02d %02x\n", i - m_pSliceOffsets[0], ptr[i]);
+        }
+    }
+#endif
+    // Copy the tile group offsets and sizes.
+    std::copy(std::begin(m_pSliceOffsets), std::end(m_pSliceOffsets), m_PicData.slice_offsets_and_size);
 
     m_pVkPictureData->firstSliceIndex = 0;
     m_pVkPictureData->CodecSpecific.av1 = m_PicData;
@@ -263,39 +280,29 @@ bool VulkanAV1Decoder::end_of_picture(const uint8_t* pdataIn, uint32_t dataSize,
 bool VulkanAV1Decoder::BeginPicture(VkParserPictureData* pnvpd)
 {
     VkParserAv1PictureData* const av1 = &pnvpd->CodecSpecific.av1;
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
 
     av1->width = m_dwWidth;
     av1->height = m_dwHeight;
     av1->frame_offset = frame_offset;
     // sps
     av1->profile                        = sps->profile;
-    av1->use_128x128_superblock         = sps->use_128x128_superblock;  // 0:64x64, 1: 128x128
-    av1->mono_chrome                    = sps->monochrome;
-    av1->subsampling_x                  = sps->subsampling_x;
-    av1->subsampling_y                  = sps->subsampling_y;
-    av1->bit_depth_minus8               = sps->bit_depth - 8;
-    av1->enable_filter_intra            = sps->enable_filter_intra;
-    av1->enable_intra_edge_filter       = sps->enable_intra_edge_filter;
-    av1->enable_interintra_compound     = sps->enable_interintra_compound;
-    av1->enable_masked_compound         = sps->enable_masked_compound;
-    av1->enable_dual_filter             = sps->enable_dual_filter;
-    av1->enable_order_hint              = sps->enable_order_hint;
-    av1->order_hint_bits_minus1         = sps->order_hint_bits_minus_1;
-    av1->enable_jnt_comp                = sps->enable_jnt_comp;
-    av1->enable_superres                = sps->enable_superres;
-    av1->enable_cdef                    = sps->enable_cdef;
-    av1->enable_restoration             = sps->enable_restoration;
-    av1->enable_fgs                     = sps->film_grain_params_present;
+    av1->use_128x128_superblock         = sps->flags.use_128x128_superblock;  // 0:64x64, 1: 128x128
+    av1->mono_chrome                    = sps->color_config.flags.mono_chrome;
+    av1->subsampling_x                  = sps->color_config.subsampling_x;
+    av1->subsampling_y                  = sps->color_config.subsampling_y;
+    av1->bit_depth_minus8               = sps->color_config.bit_depth - 8;
+    av1->enable_fgs                     = sps->flags.film_grain_params_present;
     av1->primary_ref_frame              = primary_ref_frame;
     av1->temporal_layer_id              = temporal_id;
     av1->spatial_layer_id               = spatial_id;
+    av1->enable_order_hint              = sps->flags.enable_order_hint;
 
     VkParserSequenceInfo nvsi = m_ExtSeqInfo;
-    nvsi.eCodec         = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
+    nvsi.eCodec         = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA;
     nvsi.nChromaFormat  = av1->mono_chrome ? 0 : (av1->subsampling_x && av1->subsampling_y) ? 1 : (!av1->subsampling_x && !av1->subsampling_y) ? 3 : 2;
-    nvsi.nMaxWidth      = (sps->max_frame_width + 1) & ~1;
-    nvsi.nMaxHeight     = (sps->max_frame_height + 1) & ~1;
+    nvsi.nMaxWidth      = (sps->max_frame_width_minus_1 + 2) & ~1;
+    nvsi.nMaxHeight     = (sps->max_frame_height_minus_1 + 2) & ~1;
     nvsi.nCodedWidth    = av1->superres_width;   // nvdec does on the fly scaling so nvdec output has final width as superres_width
     nvsi.nCodedHeight   = m_dwHeight;
     nvsi.nDisplayWidth  = nvsi.nCodedWidth;
@@ -310,7 +317,7 @@ bool VulkanAV1Decoder::BeginPicture(VkParserPictureData* pnvpd)
     // nMinNumDecodeSurfaces = dpbsize (8 for av1)  + 1
     // double the decode RT count to account film grained output if film grain present
     nvsi.nMinNumDecodeSurfaces = 9;
-    if (sps->film_grain_params_present && !m_bDisableFGS) {
+    if (sps->flags.film_grain_params_present && !m_bDisableFGS) {
         nvsi.nMinNumDecodeSurfaces = 18;
     }
 
@@ -549,7 +556,7 @@ bool VulkanAV1Decoder::ParseOBUHeaderAndSize(const uint8_t* data, uint32_t datas
 
 bool VulkanAV1Decoder::ParseObuTemporalDelimiter()
 {
-    memset(m_pSliceOffsets, 0, sizeof(int)*MAX_TILES);
+    m_pSliceOffsets.fill(0);
     return true;
 }
 
@@ -585,10 +592,10 @@ int VulkanAV1Decoder::ChooseOperatingPoint()
         VkParserOperatingPointInfo OPInfo;
         memset(&OPInfo, 0, sizeof(OPInfo));
 
-        OPInfo.eCodec = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
-        OPInfo.av1.operating_points_cnt = m_sps.operating_points_cnt_minus_1 + 1;
+        OPInfo.eCodec = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA;
+        OPInfo.av1.operating_points_cnt = m_sps->operating_points_cnt_minus_1 + 1;
         for (int i = 0; i < OPInfo.av1.operating_points_cnt; i++) {
-            OPInfo.av1.operating_points_idc[i] = m_sps.operating_point_idc[i];
+            OPInfo.av1.operating_points_idc[i] = m_sps->operating_point_idc[i];
         }
 
         operating_point = m_pClient->GetOperatingPoint(&OPInfo);
@@ -600,7 +607,7 @@ int VulkanAV1Decoder::ChooseOperatingPoint()
         }
         m_bOutputAllLayers = !!(operating_point & 0x400);
         operating_point = operating_point & ~0x400;
-        if (operating_point < 0 || operating_point > m_sps.operating_points_cnt_minus_1) {
+        if (operating_point < 0 || operating_point > m_sps->operating_points_cnt_minus_1) {
             operating_point = 0;
         }
     }
@@ -609,25 +616,28 @@ int VulkanAV1Decoder::ChooseOperatingPoint()
 
 bool VulkanAV1Decoder::ParseObuSequenceHeader()
 {
-    av1_seq_param_s sequence_info;
-    memset(&sequence_info, 0, sizeof(sequence_info));
-    av1_seq_param_s *sps = &sequence_info;
+    m_sps.Reset(nullptr); // @nocheckin: Handle multiple sequence headers correctly
+    VkResult result = av1_seq_param_s::Create(0, m_sps);
+    assert((result == VK_SUCCESS) && m_sps);
+    if (result != VK_SUCCESS)
+        return false;
 
+    auto sps = m_sps;
     sps->profile = (AV1_PROFILE)u(3);
     if (sps->profile > AV1_PROFILE_2) {
         // Unsupported profile
         return false;
     }
 
-    sps->still_picture = u(1);
-    sps->reduced_still_picture_hdr = u(1);
+    sps->flags.still_picture = u(1);
+    sps->flags.reduced_still_picture_header = u(1);
 
-    if (!sps->still_picture && sps->reduced_still_picture_hdr) {
+    if (!sps->flags.still_picture && sps->flags.reduced_still_picture_header) {
         // Error: Video must have reduced_still_picture_hdr == 0
         return false;
     }
 
-    if (sps->reduced_still_picture_hdr) {
+    if (sps->flags.reduced_still_picture_header) {
         timing_info_present = 0;
         sps->decoder_model_info_present = 0;
         sps->display_model_info_present = 0;
@@ -717,18 +727,18 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
         }
     }
 
-    sps->num_bits_width = u(4) + 1;
-    sps->num_bits_height = u(4) + 1;
-    sps->max_frame_width = u(sps->num_bits_width) + 1;
-    sps->max_frame_height = u(sps->num_bits_height) + 1;
+    sps->frame_width_bits_minus_1 = u(4);
+    sps->frame_height_bits_minus_1 = u(4);
+    sps->max_frame_width_minus_1 = u(sps->frame_width_bits_minus_1 + 1);
+    sps->max_frame_height_minus_1 = u(sps->frame_height_bits_minus_1 + 1);
 
-    if (sps->reduced_still_picture_hdr) {
-        sps->frame_id_numbers_present = 0;
+    if (sps->flags.reduced_still_picture_header) {
+        sps->flags.frame_id_numbers_present_flag = 0;
     } else {
-        sps->frame_id_numbers_present = u(1);
+        sps->flags.frame_id_numbers_present_flag = u(1);
     }
 
-    if (sps->frame_id_numbers_present) {
+    if (sps->flags.frame_id_numbers_present_flag) {
         sps->delta_frame_id_length = u(4) + 2;
         sps->frame_id_length = u(3) + sps->delta_frame_id_length + 1;
         if (sps->frame_id_length > 16) {
@@ -737,33 +747,33 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
         }
     }
 
-    sps->use_128x128_superblock = u(1);
-    sps->enable_filter_intra = u(1);
-    sps->enable_intra_edge_filter = u(1);
+    sps->flags.use_128x128_superblock = u(1);
+    sps->flags.enable_filter_intra = u(1);
+    sps->flags.enable_intra_edge_filter = u(1);
 
-    if (sps->reduced_still_picture_hdr) {
-        sps->enable_interintra_compound = 0;
-        sps->enable_masked_compound = 0;
-        sps->enable_warped_motion = 0;
-        sps->enable_dual_filter = 0;
-        sps->enable_order_hint = 0;
-        sps->enable_jnt_comp = 0;
-        sps->enable_ref_frame_mvs = 0;
+    if (sps->flags.reduced_still_picture_header) {
+        sps->flags.enable_interintra_compound = 0;
+        sps->flags.enable_masked_compound = 0;
+        sps->flags.enable_warped_motion = 0;
+        sps->flags.enable_dual_filter = 0;
+        sps->flags.enable_order_hint = 0;
+        sps->flags.enable_jnt_comp = 0;
+        sps->flags.enable_ref_frame_mvs = 0;
         sps->force_screen_content_tools = SELECT_SCREEN_CONTENT_TOOLS;
         sps->force_integer_mv = SELECT_INTEGER_MV;
-        sps->order_hint_bits_minus_1 = -1;
+        sps->order_hint_bits_minus_1 = 0;
     } else {
-        sps->enable_interintra_compound = u(1);
-        sps->enable_masked_compound = u(1);
-        sps->enable_warped_motion = u(1);
-        sps->enable_dual_filter = u(1);
-        sps->enable_order_hint = u(1);
-        if (sps->enable_order_hint) {
-            sps->enable_jnt_comp = u(1);
-            sps->enable_ref_frame_mvs = u(1);
+        sps->flags.enable_interintra_compound = u(1);
+        sps->flags.enable_masked_compound = u(1);
+        sps->flags.enable_warped_motion = u(1);
+        sps->flags.enable_dual_filter = u(1);
+        sps->flags.enable_order_hint = u(1);
+        if (sps->flags.enable_order_hint) {
+            sps->flags.enable_jnt_comp = u(1);
+            sps->flags.enable_ref_frame_mvs = u(1);
         } else {
-            sps->enable_jnt_comp = 0;
-            sps->enable_ref_frame_mvs = 0;
+            sps->flags.enable_jnt_comp = 0;
+            sps->flags.enable_ref_frame_mvs = 0;
         }
 
         if (u(1)) {
@@ -781,23 +791,29 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
         } else {
             sps->force_integer_mv = SELECT_INTEGER_MV;
         }
-        sps->order_hint_bits_minus_1 = sps->enable_order_hint ? u(3) : -1;
+        sps->order_hint_bits_minus_1 = sps->flags.enable_order_hint ? u(3) : 0;
     }
 
-    sps->enable_superres = u(1);
-    sps->enable_cdef = u(1);
-    sps->enable_restoration = u(1);
+    sps->flags.enable_superres = u(1);
+    sps->flags.enable_cdef = u(1);
+    sps->flags.enable_restoration = u(1);
     // color config
     bool high_bitdepth = u(1);
     if (sps->profile == AV1_PROFILE_2 && high_bitdepth) {
         const bool twelve_bit = u(1);
-        sps->bit_depth = twelve_bit ? 12 : 10;
+        sps->color_config.bit_depth = twelve_bit ? 12 : 10;
     } else if (sps->profile <= AV1_PROFILE_2) {
-        sps->bit_depth = high_bitdepth ? 10 : 8;
+        sps->color_config.bit_depth = high_bitdepth ? 10 : 8;
     } else {
         // Unsupported profile/bit-depth combination
     }
-    sps->monochrome = sps->profile != AV1_PROFILE_1 ? u(1) : 0;
+    sps->color_config.bit_depth = sps->color_config.bit_depth;
+    sps->color_config.flags.color_range = sps->color_config.flags.color_range;
+    sps->color_config.flags.separate_uv_delta_q = sps->color_config.flags.separate_uv_delta_q;
+    sps->color_config.subsampling_x = sps->color_config.subsampling_x;
+    sps->color_config.subsampling_y = sps->color_config.subsampling_y;
+
+    sps->color_config.flags.mono_chrome = sps->profile != AV1_PROFILE_1 ? u(1) : 0;
     // color_description_present_flag
     if (u(1)) {
         sps->color_primaries = u(8);
@@ -809,42 +825,42 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
         sps->matrix_coefficients = MC_UNSPECIFIED;
     }
 
-    if (sps->monochrome) {
-        sps->color_range = u(1);
-        sps->subsampling_x = sps->subsampling_y = 1;
-        sps->separate_uv_delta_q = 0;
+    if (sps->color_config.flags.mono_chrome) {
+        sps->color_config.flags.color_range = u(1);
+        sps->color_config.subsampling_x = sps->color_config.subsampling_y = 1;
+        sps->color_config.flags.separate_uv_delta_q = 0;
     } else {
         if (sps->color_primaries == CP_BT_709 &&
             sps->transfer_characteristics == TC_SRGB &&
             sps->matrix_coefficients == MC_IDENTITY) {
-            sps->subsampling_y = sps->subsampling_x = 0;
-            sps->color_range = 1;  // assume full color-range
+            sps->color_config.subsampling_y = sps->color_config.subsampling_x = 0;
+            sps->color_config.flags.color_range = 1;  // assume full color-range
         } else {
-            sps->color_range = u(1);
+            sps->color_config.flags.color_range = u(1);
             if (sps->profile == 0) {
-                sps->subsampling_x = sps->subsampling_y = 1;// 420 
+                sps->color_config.subsampling_x = sps->color_config.subsampling_y = 1;// 420
             } else if (sps->profile == 1) {
-                sps->subsampling_x = sps->subsampling_y = 0;// 444 
+                sps->color_config.subsampling_x = sps->color_config.subsampling_y = 0;// 444
             } else {
-                if (sps->bit_depth == 12) {
-                    sps->subsampling_x = u(1);
-                    if (sps->subsampling_x) {
-                        sps->subsampling_y = u(1);
+                if (sps->color_config.bit_depth == 12) {
+                    sps->color_config.subsampling_x = u(1);
+                    if (sps->color_config.subsampling_x) {
+                        sps->color_config.subsampling_y = u(1);
                     } else {
-                        sps->subsampling_y = 0;
+                        sps->color_config.subsampling_y = 0;
                     }
                 } else {
-                    sps->subsampling_x = 1; //422
-                    sps->subsampling_y = 0;
+                    sps->color_config.subsampling_x = 1; //422
+                    sps->color_config.subsampling_y = 0;
                 }
             }
-            if (sps->subsampling_x&&sps->subsampling_y) { // subsampling equals 1 1 
+            if (sps->color_config.subsampling_x&&sps->color_config.subsampling_y) { // subsampling equals 1 1
                 sps->chroma_sample_position = u(2);
             }
         }
-        sps->separate_uv_delta_q = u(1);
+        sps->color_config.flags.separate_uv_delta_q = u(1);
     }
-    sps->film_grain_params_present = u(1);
+    sps->flags.film_grain_params_present = u(1);
 
     // check_trailing_bits()
     int bits_before_byte_alignment = 8 - (m_nalu.get_bfroffs % 8);
@@ -855,15 +871,25 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
     }
 
     if (m_bSPSReceived) {
+        // @review: this is not correct
         if (!memcmp(sps, &m_sps, sizeof(av1_seq_param_s)))
-            m_bSPSChanged = 1;
+            m_bSPSChanged = true;
     }
 
-    m_sps = *sps;
-    m_bSPSReceived = 1;
+    m_bSPSReceived = true;
+
+    VkSharedBaseObj<StdVideoPictureParametersSet> picParamObj(m_sps);
+    m_PicData.pStdSps = picParamObj.Get();
+    if (m_pClient) { // @review need to make sure this has really changed!
+        bool success = m_pClient->UpdatePictureParameters(picParamObj, m_sps->client);
+        assert(success);
+        if (!success) {
+            nvParserErrorLog("s", "\nError updating the AV1 sequence parameters\n");
+        }
+    }
 
     int operating_point = 0;
-    if (m_sps.operating_points_cnt_minus_1 > 0) {
+    if (m_sps->operating_points_cnt_minus_1 > 0) {
         operating_point = ChooseOperatingPoint();
     }
 
@@ -875,26 +901,26 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
 
 void VulkanAV1Decoder::SetupFrameSize(int frame_size_override_flag)
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     if (frame_size_override_flag) {
-        m_dwWidth = u(sps->num_bits_width) + 1;
-        m_dwHeight = u(sps->num_bits_height) + 1;
-        if (m_dwWidth > sps->max_frame_width || m_dwHeight > sps->max_frame_height) {
+        m_dwWidth = u(sps->frame_width_bits_minus_1 + 1) + 1;
+        m_dwHeight = u(sps->frame_height_bits_minus_1 + 1) + 1;
+        if (m_dwWidth > (sps->max_frame_width_minus_1 + 1) || m_dwHeight > (sps->max_frame_height_minus_1 + 1)) {
             // Error: frame resolution > Max resolution
             //return 0
         }
     } else {
-        m_dwWidth = sps->max_frame_width;
-        m_dwHeight = sps->max_frame_height;
+        m_dwWidth = sps->max_frame_width_minus_1 + 1;
+        m_dwHeight = sps->max_frame_height_minus_1 + 1;
     }
     //superres_params 
     pic_info->superres_width = m_dwWidth;
     pic_info->coded_denom = 0;
     uint8_t superres_scale_denominator = 8;
     pic_info->use_superres = 0;
-    if (sps->enable_superres){
+    if (sps->flags.enable_superres){
         if (u(1)) {
             pic_info->use_superres = 1;
             superres_scale_denominator = u(3);
@@ -908,6 +934,7 @@ void VulkanAV1Decoder::SetupFrameSize(int frame_size_override_flag)
     if (u(1)) {
         render_width = u(16) + 1;
         render_height = u(16) + 1;
+
     } else {
         render_width = pic_info->superres_width;
         render_height = m_dwHeight;
@@ -916,7 +943,7 @@ void VulkanAV1Decoder::SetupFrameSize(int frame_size_override_flag)
 
 int VulkanAV1Decoder::SetupFrameSizeWithRefs()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     uint32_t tmp;// index;
@@ -946,7 +973,7 @@ int VulkanAV1Decoder::SetupFrameSizeWithRefs()
         uint8_t superres_scale_denominator = SUPERRES_NUM;
         pic_info->coded_denom = 0;
         pic_info->use_superres = 0;
-        if (sps->enable_superres) {
+        if (sps->flags.enable_superres) {
             if (u(1)) {
                 pic_info->use_superres = 1;
                 superres_scale_denominator = u(SUPERRES_DENOM_BITS);
@@ -963,10 +990,10 @@ int VulkanAV1Decoder::SetupFrameSizeWithRefs()
 
 bool VulkanAV1Decoder::ReadFilmGrainParams()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
-    if (sps->film_grain_params_present && (pic_info->show_frame || showable_frame)) {
+    if (sps->flags.film_grain_params_present && (pic_info->show_frame || showable_frame)) {
         VkParserAv1FilmGrain* fgp = &pic_info->fgs;
         fgp->apply_grain = u(1);
         if (!fgp->apply_grain) {
@@ -1006,14 +1033,14 @@ bool VulkanAV1Decoder::ReadFilmGrainParams()
             fgp->scaling_points_y[i][1] = u(8);
         }
 
-        if (!sps->monochrome) {
+        if (!sps->color_config.flags.mono_chrome) {
             fgp->chroma_scaling_from_luma = u(1);
         } else {
             fgp->chroma_scaling_from_luma = 0;
         }
 
-        if (sps->monochrome || fgp->chroma_scaling_from_luma ||
-            ((sps->subsampling_x == 1) && (sps->subsampling_y == 1) && (fgp->num_y_points == 0))) {
+        if (sps->color_config.flags.mono_chrome || fgp->chroma_scaling_from_luma ||
+            ((sps->color_config.subsampling_x == 1) && (sps->color_config.subsampling_y == 1) && (fgp->num_y_points == 0))) {
             fgp->num_cb_points = 0;
             fgp->num_cr_points = 0;
         } else {
@@ -1132,89 +1159,127 @@ uint32_t VulkanAV1Decoder::SwGetUniform(uint32_t max_value)
 
 bool VulkanAV1Decoder::DecodeTileInfo()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
+    const auto& seq_hdr_flags = sps->flags;
+
     VkParserAv1PictureData* pic_info = &m_PicData;
 
-    int minLog2TileRows;
-    uint32_t maxTileHeightSb, widest_tile_sb;
+    // Some aliases for badly named class members.
+    int frameWidth = m_dwWidth;
+    int frameHeight = m_dwHeight;
+    int mi_cols = 2 * ((frameWidth + 7) >> 3);
+    int mi_rows = 2 * ((frameHeight + 7) >> 3);
 
-    uint32_t width_in_sb = ALIGN(m_dwWidth, 64 << sps->use_128x128_superblock) >> (6 + sps->use_128x128_superblock);
-    uint32_t height_in_sb = ALIGN(m_dwHeight, 64 << sps->use_128x128_superblock) >> (6 + sps->use_128x128_superblock);
-    uint32_t maxTileWidthSb = MAX_TILE_WIDTH >> (6 + sps->use_128x128_superblock);
-    uint32_t maxTileAreaSb = MAX_TILE_AREA >> (2 * (6 + sps->use_128x128_superblock));
-    uint32_t minLog2TileCols = tile_log2(maxTileWidthSb, width_in_sb);
-    uint32_t minLog2Tiles = std::min(minLog2TileCols, tile_log2(maxTileAreaSb, width_in_sb*height_in_sb));
+    int min_log2_tile_rows;
+    uint32_t max_tile_height_sb;
 
-    uint32_t max_log2_tile_cols = tile_log2(1, std::min(width_in_sb, (uint32_t)MAX_TILE_COLS));
-    uint32_t max_log2_tile_rows = tile_log2(1, std::min(height_in_sb, (uint32_t)MAX_TILE_ROWS));
+    // Macroblock dimensions to superblock dimenseions
+    uint32_t sb_cols = seq_hdr_flags.use_128x128_superblock ? ((mi_cols + 31) >> 5) : ((mi_cols + 15) >> 4);
+    uint32_t sb_rows = seq_hdr_flags.use_128x128_superblock ? ((mi_rows + 31) >> 5) : ((mi_rows + 15) >> 4);
+    int numSuperblocks = sb_cols * sb_rows;
+    int sb_shift = seq_hdr_flags.use_128x128_superblock ? 5 : 4;
+    int sb_size = sb_shift + 2;
+
+    uint32_t max_tile_width_sb = MAX_TILE_WIDTH >> sb_size;
+    uint32_t max_tile_area_sb = MAX_TILE_AREA >> (2 * sb_size);
+    uint32_t min_log2_tile_cols = tile_log2(max_tile_width_sb, sb_cols);
+    uint32_t max_log2_tile_cols = tile_log2(1, std::min(sb_cols, MAX_TILE_COLS));
+    uint32_t max_log2_tile_rows = tile_log2(1, std::min(sb_rows, MAX_TILE_ROWS));
+    uint32_t min_log2_tiles = std::max(min_log2_tile_cols, tile_log2(max_tile_area_sb, sb_rows * sb_cols));
 
     uint8_t uniform_tile_spacing_flag = u(1);
+    pic_info->uniform_tile_spacing_flag = uniform_tile_spacing_flag;
     memset(&pic_info->tile_col_start_sb[0], 0, sizeof(pic_info->tile_col_start_sb));
     memset(&pic_info->tile_row_start_sb[0], 0, sizeof(pic_info->tile_row_start_sb));
+    memset(&pic_info->tile_width_in_sbs_minus_1[0], 0, sizeof(pic_info->tile_width_in_sbs_minus_1));
+    memset(&pic_info->tile_height_in_sbs_minus_1[0], 0, sizeof(pic_info->tile_height_in_sbs_minus_1));
+
     if (uniform_tile_spacing_flag) {
-        log2_tile_cols = minLog2TileCols;
+        int tile_width_sb, tile_height_sb;
+        log2_tile_cols = min_log2_tile_cols;
         while (log2_tile_cols < max_log2_tile_cols) {
             if (!u(1))
                 break;
             log2_tile_cols++;
         }
 
-        minLog2TileRows = std::max(int(minLog2Tiles - log2_tile_cols), 0);
-        log2_tile_rows = minLog2TileRows;
+        tile_width_sb = (sb_cols + (1 << log2_tile_cols) - 1) >> log2_tile_cols;
+        for (uint32_t off = 0, i = 0; off < sb_cols; off += tile_width_sb)
+            pic_info->tile_col_start_sb[i++] = off;
 
+        pic_info->num_tile_cols = (sb_cols + tile_width_sb - 1) / tile_width_sb;
+
+        min_log2_tile_rows = std::max(int(min_log2_tiles - log2_tile_cols), 0);
+        log2_tile_rows = min_log2_tile_rows;
         while (log2_tile_rows < max_log2_tile_rows) {
             if (!u(1))
                 break;
             log2_tile_rows++;
         }
+
+        tile_height_sb = (sb_rows + (1 << log2_tile_rows) - 1) >> log2_tile_rows;
+        for (uint32_t off = 0, i = 0; off < sb_rows; off += tile_height_sb)
+            pic_info->tile_row_start_sb[i++] = off;
+
+        pic_info->num_tile_rows = (sb_rows + tile_height_sb - 1) / tile_height_sb;
+
+        // Derive tile_width_in_sbs_minus_1 and tile_height_in_sbs_minus_1
+        uint32_t tile_col = 0;
+         for ( ; tile_col < pic_info->num_tile_cols - 1u; tile_col++)
+            pic_info->tile_width_in_sbs_minus_1[tile_col] = tile_width_sb - 1;
+        pic_info->tile_width_in_sbs_minus_1[tile_col] = sb_cols - (pic_info->num_tile_cols - 1) * tile_width_sb - 1;
+
+        uint32_t tile_row = 0;
+         for ( ; tile_row < pic_info->num_tile_rows - 1u; tile_row++)
+            pic_info->tile_height_in_sbs_minus_1[tile_row] = tile_height_sb - 1;
+        pic_info->tile_height_in_sbs_minus_1[tile_row] = sb_rows - (pic_info->num_tile_rows - 1) * tile_height_sb - 1;
+
+        // Derivce superblock column / row start positions
         uint32_t i, start_sb;
-        uint32_t size_sb = ALIGN(width_in_sb, 1 << log2_tile_cols) >> log2_tile_cols;
-        for (i = 0, start_sb = 0; start_sb < width_in_sb; i++) {
+        for (i = 0, start_sb = 0; start_sb < sb_cols; i++) {
             pic_info->tile_col_start_sb[i] = start_sb;
-            start_sb += size_sb;
+            start_sb += tile_width_sb;
         }
-        pic_info->num_tile_cols = i;
-        pic_info->tile_col_start_sb[i] = width_in_sb;
+        pic_info->tile_col_start_sb[i] = sb_cols;
 
-        size_sb = ALIGN(height_in_sb, 1 << log2_tile_rows) >> log2_tile_rows;
-        for (i = 0, start_sb = 0; start_sb < height_in_sb; i++) {
+        for (i = 0, start_sb = 0; start_sb < sb_rows; i++) {
             pic_info->tile_row_start_sb[i] = start_sb;
-            start_sb += size_sb;
+            start_sb += tile_height_sb;
         }
-        pic_info->num_tile_rows = i;
-        pic_info->tile_row_start_sb[i] = height_in_sb;
+        pic_info->tile_row_start_sb[i] = sb_rows;
     } else {
-        uint32_t i, start_sb, width_sb, height_sb;
-        width_sb = width_in_sb;
-        height_sb = height_in_sb;
-        widest_tile_sb = 1;
-        for (i = 0, start_sb = 0; width_sb > 0 && i < MAX_TILE_COLS; i++) {
-            uint32_t size_sb = 1 + SwGetUniform(std::min(width_sb, maxTileWidthSb));
+        uint32_t i, widest_tile_sb, start_sb, size_sb, max_width, max_height;
+        widest_tile_sb = 0;
+        start_sb = 0;
+
+        start_sb = 0;
+        for (i = 0; start_sb < sb_cols && i < MAX_TILE_COLS; i++) {
             pic_info->tile_col_start_sb[i] = start_sb;
+            max_width = std::min(sb_cols - start_sb, max_tile_width_sb);
+            pic_info->tile_width_in_sbs_minus_1[i] = SwGetUniform(max_width);
+            size_sb = pic_info->tile_width_in_sbs_minus_1[i] + 1;
+            widest_tile_sb = std::max(size_sb, widest_tile_sb);
             start_sb += size_sb;
-            width_sb -= size_sb;
-            widest_tile_sb = std::max(widest_tile_sb, size_sb);
         }
+        log2_tile_cols = tile_log2(1, i);
         pic_info->num_tile_cols = i;
-        pic_info->tile_col_start_sb[i] = start_sb + width_sb;
-        log2_tile_cols = tile_log2(1, pic_info->num_tile_cols);
-        if (minLog2Tiles > 0) {
-            maxTileAreaSb = height_in_sb*width_in_sb >> (minLog2Tiles + 1);
-        } else {
-            maxTileAreaSb = height_in_sb*width_in_sb;
-        }
 
-        maxTileHeightSb = std::max(maxTileAreaSb / widest_tile_sb, 1U);
+        if (min_log2_tiles > 0)
+            max_tile_area_sb = (numSuperblocks) >> (min_log2_tiles + 1);
+        else
+            max_tile_area_sb = numSuperblocks;
+        max_tile_height_sb = std::max(max_tile_area_sb / widest_tile_sb, 1u);
 
-        for (i = 0, start_sb = 0; height_sb > 0 && i < MAX_TILE_ROWS; i++) {
-            uint32_t size_sb = 1 + SwGetUniform(std::min(height_sb, maxTileHeightSb));
+        start_sb = 0;
+        for (i = 0; start_sb < sb_rows && i < MAX_TILE_ROWS; i++) {
             pic_info->tile_row_start_sb[i] = start_sb;
+            max_height = std::min(sb_rows - start_sb, max_tile_height_sb);
+            pic_info->tile_height_in_sbs_minus_1[i] = SwGetUniform(max_height);
+            size_sb = pic_info->tile_height_in_sbs_minus_1[i] + 1;
             start_sb += size_sb;
-            height_sb -= size_sb;
         }
+        log2_tile_rows = tile_log2(1, i);
         pic_info->num_tile_rows = i;
-        pic_info->tile_row_start_sb[i] = start_sb + width_sb;
-        log2_tile_rows = tile_log2(1, pic_info->num_tile_rows);
     }
 
     pic_info->context_update_tile_id = 0;
@@ -1224,6 +1289,7 @@ bool VulkanAV1Decoder::DecodeTileInfo()
         pic_info->context_update_tile_id = u(log2_tile_rows + log2_tile_cols);
         // tile size magnitude
         tile_sz_mag = u(2);
+        pic_info->tile_size_bytes_minus_1 = tile_sz_mag;
     }
 
     return true;
@@ -1243,14 +1309,14 @@ inline int VulkanAV1Decoder::ReadDeltaQ(uint32_t bits)
 
 void VulkanAV1Decoder::DecodeQuantizationData()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     pic_info->base_qindex = u(8);
     pic_info->qp_y_dc_delta_q = ReadDeltaQ(6);
-    if (!sps->monochrome) {
+    if (!sps->color_config.flags.mono_chrome) {
         int diff_uv_delta = 0;
-        if (sps->separate_uv_delta_q)
+        if (sps->color_config.flags.separate_uv_delta_q)
             diff_uv_delta = u(1);
         pic_info->qp_u_dc_delta_q = ReadDeltaQ(6);
         pic_info->qp_u_ac_delta_q = ReadDeltaQ(6);
@@ -1272,7 +1338,7 @@ void VulkanAV1Decoder::DecodeQuantizationData()
     if (pic_info->using_qmatrix) {
         pic_info->qm_y = u(4);
         pic_info->qm_u = u(4);
-        if (!sps->separate_uv_delta_q) {
+        if (!sps->color_config.flags.separate_uv_delta_q) {
             pic_info->qm_v = pic_info->qm_u;
         } else {
             pic_info->qm_v = u(4);
@@ -1359,7 +1425,7 @@ static const char lf_ref_delta_default[] = { 1, 0, 0, 0, (char)-1, 0, (char)-1, 
 
 void VulkanAV1Decoder::DecodeLoopFilterdata()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     //set default values
@@ -1384,7 +1450,7 @@ void VulkanAV1Decoder::DecodeLoopFilterdata()
 
     pic_info->loop_filter_level[0] = u(6);
     pic_info->loop_filter_level[1] = u(6);
-    if (!sps->monochrome && (pic_info->loop_filter_level[0] || pic_info->loop_filter_level[1])) {
+    if (!sps->color_config.flags.mono_chrome && (pic_info->loop_filter_level[0] || pic_info->loop_filter_level[1])) {
         pic_info->loop_filter_level_u = u(6);
         pic_info->loop_filter_level_v = u(6);
     }
@@ -1394,6 +1460,7 @@ void VulkanAV1Decoder::DecodeLoopFilterdata()
     pic_info->loop_filter_delta_enabled = u(1);
     if (pic_info->loop_filter_delta_enabled) {
         lf_mode_ref_delta_update = u(1);
+        pic_info->loop_filter_delta_update = lf_mode_ref_delta_update;
         if (lf_mode_ref_delta_update) {
             for (int i = 0; i < NUM_REF_FRAMES; i++) {
                 if (u(1)) {
@@ -1412,7 +1479,7 @@ void VulkanAV1Decoder::DecodeLoopFilterdata()
 
 void VulkanAV1Decoder::DecodeCDEFdata()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     if (pic_info->allow_intrabc)
@@ -1427,7 +1494,7 @@ void VulkanAV1Decoder::DecodeCDEFdata()
         }
         pic_info->cdef_y_pri_strength[i] = u(4);
         pic_info->cdef_y_sec_strength[i] = u(2);
-        if (!sps->monochrome) {
+        if (!sps->color_config.flags.mono_chrome) {
             pic_info->cdef_uv_pri_strength[i] = u(4);
             pic_info->cdef_uv_sec_strength[i] = u(2);
         }
@@ -1436,24 +1503,23 @@ void VulkanAV1Decoder::DecodeCDEFdata()
 
 void VulkanAV1Decoder::DecodeLoopRestorationData()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     if (pic_info->allow_intrabc) {
         return;
     }
 
-    int n_planes = sps->monochrome ? 1 : 3;
+    int n_planes = sps->color_config.flags.mono_chrome ? 1 : 3;
     bool use_lr = false, use_chroma_lr = false;
 
+    uint8_t remap_lr_type[4] = { RESTORE_NONE, RESTORE_SWITCHABLE, RESTORE_WIENER, RESTORE_SGRPROJ };
     for (int pl = 0; pl < n_planes; pl++) {
-        if (u(1)) {
-            pic_info->lr_type[pl] = (u(1)) ? 2 : 1;
-        } else {
-            pic_info->lr_type[pl] = (u(1)) ? 3 : 0;
-        }
+        uint8_t lr_type = u(2);
+        pic_info->lr_type[pl] = lr_type;
+        pic_info->FrameRestorationType[pl] = remap_lr_type[lr_type];
 
-        if (pic_info->lr_type[pl] != 0) {
+        if (pic_info->FrameRestorationType[pl] != RESTORE_NONE) {
             use_lr = true;
             if (pl > 0) {
                 use_chroma_lr = true;
@@ -1462,12 +1528,12 @@ void VulkanAV1Decoder::DecodeLoopRestorationData()
     }
     if (use_lr)  {
         int lr_unit_shift = 0;
-        int sb_size = sps->use_128x128_superblock == 1 /*BLOCK_128X128*/ ? 2 : 1; //128 : 64;
+        int sb_size = sps->flags.use_128x128_superblock == 1 /*BLOCK_128X128*/ ? 2 : 1; //128 : 64;
 
         for (int pl = 0; pl < n_planes; pl++) {
             pic_info->lr_unit_size[pl] = sb_size;  // 64 or 128
         }
-        if (sps->use_128x128_superblock == 1) {
+        if (sps->flags.use_128x128_superblock == 1) {
             lr_unit_shift = 1 + u(1);
         } else {
             lr_unit_shift = u(1);
@@ -1476,13 +1542,16 @@ void VulkanAV1Decoder::DecodeLoopRestorationData()
             }
         }
         pic_info->lr_unit_size[0] = 1 + lr_unit_shift;
+        pic_info->lr_unit_shift = lr_unit_shift;
     } else {
         for (int pl = 0; pl < n_planes; pl++)
             pic_info->lr_unit_size[pl] = 3;  // 256
     }
-    if (!sps->monochrome) {
-        if (use_chroma_lr && (sps->subsampling_x && sps->subsampling_y)) {
-            pic_info->lr_unit_size[1] = pic_info->lr_unit_size[0] - u(1); // *std::min(sps->subsampling_x, sps->subsampling_y));
+    pic_info->lr_uv_shift = 0;
+    if (!sps->color_config.flags.mono_chrome) {
+        if (use_chroma_lr && (sps->color_config.subsampling_x && sps->color_config.subsampling_y)) {
+            pic_info->lr_uv_shift = u(1);
+            pic_info->lr_unit_size[1] = pic_info->lr_unit_size[0] - pic_info->lr_uv_shift; // *std::min(sps->subsampling_x, sps->subsampling_y));
             pic_info->lr_unit_size[2] = pic_info->lr_unit_size[1];
         } else {
             pic_info->lr_unit_size[1] = pic_info->lr_unit_size[0];
@@ -1493,8 +1562,8 @@ void VulkanAV1Decoder::DecodeLoopRestorationData()
 
 int VulkanAV1Decoder::GetRelativeDist1(int a, int b)
 {
-    av1_seq_param_s *const sps = &m_sps;
-    if (!sps->enable_order_hint) {
+    av1_seq_param_s *const sps = m_sps.Get();
+    if (!sps->flags.enable_order_hint) {
         return 0;
     }
 
@@ -1513,9 +1582,9 @@ int VulkanAV1Decoder::GetRelativeDist1(int a, int b)
 //follow spec 7.8
 void VulkanAV1Decoder::SetFrameRefs(int last_frame_idx, int gold_frame_idx)
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
 
-    assert(sps->enable_order_hint);
+    assert(sps->flags.enable_order_hint);
     assert(sps->order_hint_bits_minus_1 >= 0);
 
     const int OrderHint = (int)frame_offset;
@@ -1643,10 +1712,10 @@ void VulkanAV1Decoder::SetFrameRefs(int last_frame_idx, int gold_frame_idx)
 
 int VulkanAV1Decoder::IsSkipModeAllowed()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
-    if (!sps->enable_order_hint || IsFrameIntra() ||
+    if (!sps->flags.enable_order_hint || IsFrameIntra() ||
         pic_info->reference_mode == AV1_SINGLE_PREDICTION_ONLY) {
         return 0;
     }
@@ -1707,7 +1776,7 @@ int VulkanAV1Decoder::IsSkipModeAllowed()
 
 bool VulkanAV1Decoder::ParseObuFrameHeader()
 {
-    av1_seq_param_s *const sps = &m_sps;
+    av1_seq_param_s *const sps = m_sps.Get();
     VkParserAv1PictureData* pic_info = &m_PicData;
 
     int frame_size_override_flag = 0;
@@ -1715,7 +1784,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
     last_frame_type = pic_info->frame_type;
     last_intra_only = intra_only;
 
-    if (sps->reduced_still_picture_hdr) {
+    if (sps->flags.reduced_still_picture_header) {
         show_existing_frame = 0;
         showable_frame = 0;
         pic_info->show_frame = 1;
@@ -1732,7 +1801,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
             if (sps->decoder_model_info_present && timing_info.equal_picture_interval == 0) {
                 tu_presentation_delay = u(buffer_model.frame_presentation_time_length);
             }
-            if (sps->frame_id_numbers_present) {
+            if (sps->flags.frame_id_numbers_present_flag) {
                 int frame_id_length = sps->frame_id_length;
                 int display_frame_id = u(frame_id_length);
 
@@ -1751,7 +1820,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
             pic_info->show_frame = 1;
             showable_frame = m_pBuffers[show_existing_frame_index].showable_frame;
 
-            if (sps->film_grain_params_present) {
+            if (sps->flags.film_grain_params_present) {
                 memcpy(&pic_info->fgs, &m_pBuffers[show_existing_frame_index].film_grain_params, sizeof(av1_film_grain_s));
             }
 
@@ -1832,8 +1901,8 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
     primary_ref_frame = PRIMARY_REF_NONE;
     frame_size_override_flag = 0;
 
-    if (!sps->reduced_still_picture_hdr) {
-        if (sps->frame_id_numbers_present) {
+    if (!sps->flags.reduced_still_picture_header) {
+        if (sps->flags.frame_id_numbers_present_flag) {
             int frame_id_length = sps->frame_id_length;
             int diff_len = sps->delta_frame_id_length;
             int prev_frame_id = 0;
@@ -1875,7 +1944,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
 
         frame_size_override_flag = pic_info->frame_type == AV1_SWITCH_FRAME ? 1 : u(1);
         //order_hint
-        frame_offset = u(sps->order_hint_bits_minus_1 + 1);
+        frame_offset = sps->flags.enable_order_hint ? u(sps->order_hint_bits_minus_1 + 1) : 0;
 
         if (!pic_info->error_resilient_mode && !(IsFrameIntra())) {
             primary_ref_frame = u(3);
@@ -1927,7 +1996,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
     }
 
     if (((!IsFrameIntra()) || refresh_frame_flags != 0xFF) &&
-        pic_info->error_resilient_mode && sps->enable_order_hint) {
+        pic_info->error_resilient_mode && sps->flags.enable_order_hint) {
         for (int i = 0; i < NUM_REF_FRAMES; i++) {
             // ref_order_hint[i]
             int offset = u(sps->order_hint_bits_minus_1 + 1);
@@ -1952,7 +2021,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
         pic_info->use_ref_frame_mvs = 0;
         // if (pbi->need_resync != 1)
         {
-            if (sps->enable_order_hint) {
+            if (sps->flags.enable_order_hint) {
                 frame_refs_short_signaling = u(1);
             } else {
                 frame_refs_short_signaling = 0;
@@ -1987,7 +2056,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
                     active_ref_idx[i] = mapped_ref;
                 }
 
-                if (sps->frame_id_numbers_present) {
+                if (sps->flags.frame_id_numbers_present_flag) {
                     int frame_id_length = sps->frame_id_length;
                     int diff_len = sps->delta_frame_id_length;
                     int delta_frame_id_minus_1 = u(diff_len);
@@ -2014,6 +2083,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
 
             //read_interpolation_filter
             int tmp = u(1);
+            pic_info->is_filter_switchable = tmp;
             if (tmp) {
                 pic_info->interp_filter = AV1_SWITCHABLE;
             } else {
@@ -2022,11 +2092,16 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
             pic_info->switchable_motion_mode = u(1);
         }
 
-        if (!pic_info->error_resilient_mode && sps->enable_ref_frame_mvs &&
-            sps->enable_order_hint && !IsFrameIntra()) {
+        if (!pic_info->error_resilient_mode && sps->flags.enable_ref_frame_mvs &&
+            sps->flags.enable_order_hint && !IsFrameIntra()) {
             pic_info->use_ref_frame_mvs = u(1);
         } else {
             pic_info->use_ref_frame_mvs = 0;
+        }
+
+        for (int i = 0; i < 8; i++)
+        {
+            pic_info->ref_order_hint[i] = RefOrderHint[i];
         }
 
         /*      for (int i = 0; i < REFS_PER_FRAME; ++i)
@@ -2042,7 +2117,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
         */
     }
 
-    if (sps->frame_id_numbers_present) {
+    if (sps->flags.frame_id_numbers_present_flag) {
         // Update reference frame id's
         int tmp_flags = refresh_frame_flags;
         for (int i = 0; i < NUM_REF_FRAMES; i++) {
@@ -2053,7 +2128,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
         }
     }
 
-    if (!(sps->reduced_still_picture_hdr) && !(pic_info->disable_cdf_update)) {
+    if (!(sps->flags.reduced_still_picture_header) && !(pic_info->disable_cdf_update)) {
         pic_info->disable_frame_end_update_cdf = u(1);
     } else {
         pic_info->disable_frame_end_update_cdf = 1;
@@ -2103,22 +2178,22 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
         pic_info->loop_filter_level[0] = 0;
         pic_info->loop_filter_level[1] = 0;
     }
-    if (pic_info->coded_lossless || !sps->enable_cdef) {
+    if (pic_info->coded_lossless || !sps->flags.enable_cdef) {
         pic_info->cdef_bits = 0;
         //cm->cdef_strengths[0] = 0;
         //cm->cdef_uv_strengths[0] = 0;
     }
-    if (all_lossless || !sps->enable_restoration) {
-        pic_info->lr_type[0] = 0; //RESTORE_NONE;
-        pic_info->lr_type[1] = 0; //RESTORE_NONE;
-        pic_info->lr_type[2] = 0; //RESTORE_NONE;
+    if (all_lossless || !sps->flags.enable_restoration) {
+        pic_info->FrameRestorationType[0] = RESTORE_NONE;
+        pic_info->FrameRestorationType[1] = RESTORE_NONE;
+        pic_info->FrameRestorationType[2] = RESTORE_NONE;
     }
     DecodeLoopFilterdata();
 
-    if (!pic_info->coded_lossless && sps->enable_cdef && !pic_info->allow_intrabc) {
+    if (!pic_info->coded_lossless && sps->flags.enable_cdef && !pic_info->allow_intrabc) {
         DecodeCDEFdata();
     }
-    if (!all_lossless && sps->enable_restoration && !pic_info->allow_intrabc) {
+    if (!all_lossless && sps->flags.enable_restoration && !pic_info->allow_intrabc) {
         DecodeLoopRestorationData();
     }
 
@@ -2131,7 +2206,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
 
     pic_info->skip_mode = IsSkipModeAllowed() ? u(1) : 0;
 
-    if (!IsFrameIntra() && !pic_info->error_resilient_mode && sps->enable_warped_motion) {
+    if (!IsFrameIntra() && !pic_info->error_resilient_mode && sps->flags.enable_warped_motion) {
         pic_info->allow_warped_motion = u(1);
     } else {
         pic_info->allow_warped_motion = 0;
@@ -2149,6 +2224,8 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
     }
 
     ReadFilmGrainParams();
+
+    pic_info->refresh_frame_flags = refresh_frame_flags;
 
     return true;
 }
@@ -2199,22 +2276,27 @@ bool IsObuInCurrentOperatingPoint(int  current_operating_point, AV1ObuHeader *hd
     return false;
 }
 
-void VulkanAV1Decoder::CalcTileOffsets(const uint8_t *base, int offset, int tile_start, int tile_end, int len)
+void VulkanAV1Decoder::CalcTileOffsets(const uint8_t *base, const uint8_t *end, int offset, int tile_start, int tile_end)
 {
-//    VkParserAv1PictureData* pic_info = &m_PicData;
+    int tile_size_bytes = tile_sz_mag + 1;
+    const uint8_t* ptr = base;
+
     for (int tile_id = tile_start; tile_id <= tile_end; tile_id++) {
-        if (tile_id == tile_end) {
-            m_pSliceOffsets[2 * tile_id] = offset;
-            m_pSliceOffsets[2 * tile_id + 1] = len;
-        } else {
-            int size = 1;
-            for (uint32_t i = 0; i <= tile_sz_mag; i++) {
-                size += base[offset++] << (i * 8);
-            }
-            m_pSliceOffsets[2 * tile_id] = offset;
-            m_pSliceOffsets[2 * tile_id + 1] = offset + size;;
-            offset += size;
+        size_t size = 0;
+        bool is_last = tile_id == tile_end;
+        if (!is_last)
+        {
+            size = read_tile_group_size(ptr, tile_size_bytes) + MIN_TILE_SIZE_BYTES;
+            ptr += tile_size_bytes;
+            assert(size <= (size_t)(end - ptr));
         }
+        else
+        {
+            size = end - ptr;
+        }
+        m_pSliceOffsets[2 * tile_id] = offset + (ptr - base);
+        m_pSliceOffsets[2 * tile_id + 1] = size;
+        ptr += size;
     }
 }
 
@@ -2223,15 +2305,12 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
 {
     m_bSPSReceived = false;
     m_bSPSChanged = false;
-    int consumedBytes = 0;
+    uint32_t consumedBytes = 0;
     AV1ObuHeader hdr;
-    int n_tile_groups = 0;
-    bool last_tile_group = 0;
+    bool last_tile_group;
     int tile_start = 0;
     int tile_end = -1;
-    const uint8_t* pBitStream = pdatain;
     unsigned int parsedBytes = 0;
-    unsigned int bitStreamSize = datasize;
 
     while (datasize > 0) {
         memset(&hdr, 0, sizeof(hdr));
@@ -2239,7 +2318,21 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
             // OBU header parsing failed
             return false;
         }
-
+#if DEBUG_PARSER
+        const uint8_t* ptr = pdatain;
+        printf("OBU size%d has_size?%d hdr size=%d payload size=%d:=============\n", datasize, hdr.has_size_field, hdr.header_size, hdr.payload_size);
+        for (int i = 0 ; i < datasize; i++)
+        {
+            printf("%02d ", i);
+        }
+        printf("\n");
+        for (int i = 0 ; i < datasize; i++)
+        {
+            printf("%02x ", ptr[i]);
+        }
+        printf("\n");
+        fflush(stdout);
+#endif
         if (datasize < int(hdr.payload_size + hdr.header_size)) {
             // Error: Truncated frame data
             return false;
@@ -2267,82 +2360,40 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
             break;
         case AV1_OBU_FRAME_HEADER:
         case AV1_OBU_FRAME:
+        {
             ParseObuFrameHeader();
             if (show_existing_frame) break;
             if (hdr.type != AV1_OBU_FRAME) {
                 rbsp_trailing_bits();
             }
 
-            if (hdr.type == AV1_OBU_FRAME) {
-//#if NVCFG(GLOBAL_FEATURE_GR1524_NVDECODE_API_EXTRACT_SEI_DATA)
-#if 0
-                m_SEIMessageIdx = (m_SEIMessageIdx + 1) % 2;
-#endif
-                // byte align before reading tile group header
-                while (!byte_aligned())
-                    u(1);
-                ParseObuTileGroupHeader(tile_start, tile_end, last_tile_group, 1);
-                n_tile_groups = 1;
+            if (hdr.type != AV1_OBU_FRAME) break;
 
-                consumedBytes = (consumed_bits() + 7) / 8;
-                bool bStatus = true;
-                if (!pck->nSideDataLength) {
-                    CalcTileOffsets(pdatain + hdr.header_size + consumedBytes, 0, tile_start, tile_end, hdr.payload_size - consumedBytes);
-                    bStatus = end_of_picture(pdatain + hdr.header_size + consumedBytes, hdr.payload_size - consumedBytes);
-                } else {
-                    CalcTileOffsets(pBitStream, parsedBytes + hdr.header_size + consumedBytes, tile_start, tile_end, parsedBytes + hdr.header_size + hdr.payload_size);
-                    bStatus = end_of_picture(pBitStream, bitStreamSize, pck->pbSideData, pck->nSideDataLength);
-                }
-                if (!bStatus) {
-                    return false;
-                }
-            }
-            break;
-        case AV1_OBU_TILE_GROUP: {
-            ParseObuTileGroupHeader(tile_start, tile_end, last_tile_group, 0);
 //#if NVCFG(GLOBAL_FEATURE_GR1524_NVDECODE_API_EXTRACT_SEI_DATA)
 #if 0
             m_SEIMessageIdx = (m_SEIMessageIdx + 1) % 2;
 #endif
-            consumedBytes = (consumed_bits() + 7) / 8;
-            const uint8_t *pBase = pdatain + hdr.header_size + consumedBytes; // store reference
-            if(!pck->nSideDataLength)
-                CalcTileOffsets(pBase, 0, tile_start, tile_end, hdr.payload_size - consumedBytes);
-            else
-                CalcTileOffsets(pBitStream, parsedBytes + hdr.header_size + consumedBytes, tile_start, tile_end, parsedBytes + hdr.header_size + hdr.payload_size);
-            n_tile_groups = 1;
-            int len = hdr.payload_size - consumedBytes;
-            while (!last_tile_group) {
-                m_nalu.start_offset += hdr.payload_size;
-                pdatain += (hdr.payload_size + hdr.header_size);
-                datasize -= (hdr.payload_size + hdr.header_size);
-                ParseOBUHeaderAndSize(pdatain, datasize, &hdr);
-                len += (hdr.payload_size + hdr.header_size);
-                if (hdr.type == AV1_OBU_TILE_GROUP) {
-                    m_nalu.start_offset += hdr.header_size;
-                    init_dbits();
-                    ParseObuTileGroupHeader(tile_start, tile_end, last_tile_group, 0);
-                    consumedBytes = (consumed_bits() + 7) / 8;
-                    if (!pck->nSideDataLength) {
-                        int offset = (int)(pdatain - pBase) + consumedBytes + hdr.header_size;
-                        int end = (int)(pdatain - pBase) + hdr.payload_size + hdr.header_size;
-                        CalcTileOffsets(pBase, offset, tile_start, tile_end, end);
-                    } else {
-                        int offset = (int)(pdatain - pBase) + consumedBytes + hdr.header_size + parsedBytes;
-                        int end = (int)(pdatain - pBase) + hdr.payload_size + hdr.header_size + parsedBytes;
-                        CalcTileOffsets(pBitStream, offset, tile_start, tile_end, end);
-                    }
-                    n_tile_groups++;
-                } else {
-                    m_nalu.start_offset += hdr.header_size;
-                }
-            }
+            // byte align before reading tile group header
+            while (!byte_aligned())
+                u(1);
 
-            if (!end_of_picture(pck->nSideDataLength ? pBitStream : pBase, pck->nSideDataLength ? bitStreamSize : len)) {
+            ParseObuTileGroupHeader(tile_start, tile_end, last_tile_group, 1);
+
+            consumedBytes = (consumed_bits() + 7) / 8;
+            assert(consumedBytes < hdr.payload_size);
+
+            uint32_t tileGroupSizeBytes = hdr.payload_size - consumedBytes;
+            uint8_t* pTileGroupPayloadDataStart = (uint8_t*)pdatain + hdr.header_size + consumedBytes;
+            uint8_t* pTileGroupPayloadDataEnd = pTileGroupPayloadDataStart + tileGroupSizeBytes;
+            uint32_t tileGroupStartOffestInOBU = m_nalu.start_offset + consumedBytes;
+            bool bStatus = true;
+            CalcTileOffsets(pTileGroupPayloadDataStart, pTileGroupPayloadDataEnd, tileGroupStartOffestInOBU, tile_start, tile_end);
+            bStatus = end_of_picture(pTileGroupPayloadDataStart, tileGroupSizeBytes, tileGroupStartOffestInOBU);
+            if (!bStatus) {
                 return false;
             }
+            break;
         }
-        break;
 //#if NVCFG(GLOBAL_FEATURE_GR1524_NVDECODE_API_EXTRACT_SEI_DATA)
 #if 0
         case AV1_OBU_METADATA: {
@@ -2539,5 +2590,7 @@ bool VulkanAV1Decoder::ParseByteStream(const VkParserBitstreamPacket* pck, size_
 
     return true;
 }
+
+const char* av1_seq_param_s::m_refClassId = "av1SpsVideoPictureParametersSet";
 
 #endif // ENABLE_AV1_DECODER

@@ -90,6 +90,24 @@ int32_t VkParserVideoPictureParameters::PopulateH265UpdateFields(const StdVideoP
     return currentId;
 }
 
+int32_t VkParserVideoPictureParameters::PopulateAV1UpdateFields(const StdVideoPictureParametersSet* pStdPictureParametersSet,
+                                                                VkVideoDecodeAV1SessionParametersAddInfoMESA& av1SessionParametersAddInfo)
+{
+    int32_t currentId = -1;
+    if (pStdPictureParametersSet == nullptr) {
+        return currentId;
+    }
+
+    assert(pStdPictureParametersSet->GetStdType() == StdVideoPictureParametersSet::TYPE_AV1_SPS);
+    assert(av1SessionParametersAddInfo.sType == VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_ADD_INFO_MESA);
+    av1SessionParametersAddInfo.sequence_header = const_cast<StdVideoAV1MESASequenceHeader*>(pStdPictureParametersSet->GetStdAV1Sps());
+    bool isAv1Sps = false;
+    currentId = pStdPictureParametersSet->GetAv1SpsId(isAv1Sps);
+    assert(isAv1Sps);
+
+    return currentId;
+}
+
 VkResult
 VkParserVideoPictureParameters::Create(const VulkanDeviceContext* vkDevCtx,
                                        VkSharedBaseObj<VkParserVideoPictureParameters>& templatePictureParameters,
@@ -120,6 +138,9 @@ VkResult VkParserVideoPictureParameters::CreateParametersObject(const VulkanDevi
     VkVideoDecodeH265SessionParametersCreateInfoKHR h265SessionParametersCreateInfo = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_CREATE_INFO_KHR };
     VkVideoDecodeH265SessionParametersAddInfoKHR h265SessionParametersAddInfo = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR};
 
+    VkVideoDecodeAV1SessionParametersCreateInfoMESA av1SessionParametersCreateInfo = { VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_CREATE_INFO_MESA };
+    VkVideoDecodeAV1SessionParametersAddInfoMESA av1SessionParametersAddInfo = { VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_ADD_INFO_MESA };
+
     StdVideoPictureParametersSet::StdType updateType = pStdVideoPictureParametersSet->GetStdType();
     switch (updateType)
     {
@@ -148,6 +169,14 @@ VkResult VkParserVideoPictureParameters::CreateParametersObject(const VulkanDevi
             currentId = PopulateH265UpdateFields(pStdVideoPictureParametersSet, h265SessionParametersAddInfo);
         }
         break;
+        case StdVideoPictureParametersSet::TYPE_AV1_SPS:
+        {
+            createInfo.pNext = &av1SessionParametersCreateInfo;
+            av1SessionParametersCreateInfo.pParametersAddInfo = &av1SessionParametersAddInfo;
+
+            currentId = PopulateAV1UpdateFields(pStdVideoPictureParametersSet, av1SessionParametersAddInfo);
+        }
+        break;
         default:
             assert(!"Invalid Parser format");
             return VK_ERROR_INITIALIZATION_FAILED;
@@ -173,6 +202,7 @@ VkResult VkParserVideoPictureParameters::CreateParametersObject(const VulkanDevi
             m_vpsIdsUsed = pTemplatePictureParameters->m_vpsIdsUsed;
             m_spsIdsUsed = pTemplatePictureParameters->m_spsIdsUsed;
             m_ppsIdsUsed = pTemplatePictureParameters->m_ppsIdsUsed;
+            m_av1SpsIdsUsed = pTemplatePictureParameters->m_av1SpsIdsUsed;
         }
 
         assert (currentId >= 0);
@@ -188,6 +218,10 @@ VkResult VkParserVideoPictureParameters::CreateParametersObject(const VulkanDevi
             case StdVideoPictureParametersSet::VPS_TYPE:
                 m_vpsIdsUsed.set(currentId, true);
             break;
+
+            case StdVideoPictureParametersSet::AV1_SPS_TYPE:
+                m_av1SpsIdsUsed.set(currentId, true);
+                break;
             default:
                 assert(!"Invalid StdVideoPictureParametersSet Parameter Type!");
         }
@@ -207,6 +241,7 @@ VkResult VkParserVideoPictureParameters::UpdateParametersObject(const StdVideoPi
     VkVideoSessionParametersUpdateInfoKHR updateInfo = { VK_STRUCTURE_TYPE_VIDEO_SESSION_PARAMETERS_UPDATE_INFO_KHR };
     VkVideoDecodeH264SessionParametersAddInfoKHR h264SessionParametersAddInfo = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H264_SESSION_PARAMETERS_ADD_INFO_KHR };
     VkVideoDecodeH265SessionParametersAddInfoKHR h265SessionParametersAddInfo = { VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_SESSION_PARAMETERS_ADD_INFO_KHR};
+    VkVideoDecodeAV1SessionParametersAddInfoMESA av1SessionParametersAddInfo = { VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_ADD_INFO_MESA };
 
     StdVideoPictureParametersSet::StdType updateType = pStdVideoPictureParametersSet->GetStdType();
     switch (updateType)
@@ -224,6 +259,16 @@ VkResult VkParserVideoPictureParameters::UpdateParametersObject(const StdVideoPi
         {
             updateInfo.pNext = &h265SessionParametersAddInfo;
             currentId = PopulateH265UpdateFields(pStdVideoPictureParametersSet, h265SessionParametersAddInfo);
+        }
+        break;
+        case StdVideoPictureParametersSet::TYPE_AV1_SPS:
+        {
+            // Daniel Rakos said only creation of parameters is supported in AV1, not updates.
+            // TODO: Properly fix the call chains in the case of AV1, for now just ignore the updates...
+            //assert(false && "There should be no calls to UpdateParametersObject for AV1");
+            return VK_SUCCESS;
+            updateInfo.pNext = &av1SessionParametersAddInfo;
+            currentId = PopulateAV1UpdateFields(pStdVideoPictureParametersSet, av1SessionParametersAddInfo);
         }
         break;
         default:
@@ -252,6 +297,10 @@ VkResult VkParserVideoPictureParameters::UpdateParametersObject(const StdVideoPi
 
             case StdVideoPictureParametersSet::VPS_TYPE:
                 m_vpsIdsUsed.set(currentId, true);
+            break;
+
+            case StdVideoPictureParametersSet::AV1_SPS_TYPE:
+            m_av1SpsIdsUsed.set(currentId, true);
             break;
             default:
                 assert(!"Invalid StdVideoPictureParametersSet Parameter Type!");
