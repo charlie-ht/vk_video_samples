@@ -49,7 +49,7 @@ const char* VkVideoDecoder::GetVideoCodecString(VkVideoCodecOperationFlagBitsKHR
 
     for (unsigned i = 0; i < sizeof(aCodecName) / sizeof(aCodecName[0]); i++) {
         if (codec == aCodecName[i].eCodec) {
-            return aCodecName[codec].name;
+            return aCodecName[i].name;
         }
     }
 
