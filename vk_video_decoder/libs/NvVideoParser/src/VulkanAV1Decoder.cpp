@@ -200,7 +200,7 @@ void VulkanAV1Decoder::AddBuffertoDispQueue(VkPicIf* pDispPic)
 // kick-off decoding
 bool VulkanAV1Decoder::end_of_picture(const uint8_t* pdataIn, uint32_t dataSize, uint8_t* pbSideDataIn, uint32_t sideDataSize)
 {
-    memset(m_pVkPictureData, 0, sizeof(VkParserPictureData));
+    *m_pVkPictureData = VkParserPictureData();
     m_pVkPictureData->numSlices = m_PicData.num_tile_cols * m_PicData.num_tile_rows;  // set number of tiles as AV1 doesn't have slice concept
     m_pVkPictureData->bitstreamDataLen = dataSize;
     //m_pVkPictureData->bitstreamData(const_cast<uint8_t*>(pdataIn));
