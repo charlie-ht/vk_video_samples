@@ -364,6 +364,8 @@ typedef struct VkParserAv1GlobalMotionParameters {
 } VkParserAv1GlobalMotionParameters;
 
 typedef struct VkParserAv1PictureData {
+    const StdVideoPictureParametersSet*     pStdSps;
+
     VkPicIf* pDecodePic;
     uint32_t width;
     uint32_t superres_width;
@@ -378,25 +380,12 @@ typedef struct VkParserAv1PictureData {
         subsampling_y : 1; // (subsampling_x, _y) 1,1 = 420, 1,0 = 422, 0,0 = 444
     uint32_t mono_chrome : 1;
     uint32_t bit_depth_minus8 : 4;
-    uint32_t enable_filter_intra : 1; // tool enable in seq level, 0 : disable 1:
-        // frame header control
-    uint32_t enable_intra_edge_filter : 1;
-    uint32_t enable_interintra_compound : 1;
-    uint32_t enable_masked_compound : 1;
-    uint32_t enable_dual_filter : 1; // enable or disable vertical and horiz
-        // filter selection
-    uint32_t enable_order_hint : 1; // 0 - disable order hint, and related tools
-    uint32_t order_hint_bits_minus1 : 3; // is used to compute OrderHintBits
-    uint32_t enable_jnt_comp : 1; // 0 - disable joint compound modes
-    uint32_t enable_superres : 1;
-    uint32_t enable_cdef : 1;
-    uint32_t enable_restoration : 1;
     uint32_t enable_fgs : 1;
-    uint32_t reserved0 : 7;
+    uint32_t reserved0 : 4;
 
     // frame header
     uint32_t frame_type : 2; // Key frame, Inter frame, intra only, s-frame
-    uint32_t show_frame : 1; // Key frame, Inter frame, intra only, s-frame
+    uint32_t show_frame : 1; // Whether to show or use as a forward keyframe
     uint32_t error_resilient_mode : 1;
     uint32_t disable_cdf_update : 1; // disable CDF update during symbol decoding
     uint32_t allow_screen_content_tools : 1; // screen content tool enable
@@ -404,6 +393,7 @@ typedef struct VkParserAv1PictureData {
     uint32_t coded_denom : 3; // The denominator minus9  of the superres scale
     uint32_t allow_intrabc : 1; // IBC enable
     uint32_t allow_high_precision_mv : 1; // 1/8 precision mv enable
+    uint32_t is_filter_switchable : 1;
     uint32_t interp_filter : 3; // interpolation filter : EIGHTTAP_REGULAR,....
     uint32_t switchable_motion_mode : 1; // 0 : simple motion mode, 1 : SIMPLE,
         // OBMC, LOCAL  WARP
@@ -427,13 +417,16 @@ typedef struct VkParserAv1PictureData {
         coded_lossless : 1; // 1 means all segments use lossless coding.Framem is
         // fully lossless, CDEF/DBF will disable
     uint32_t use_superres : 1; // frame level frame for using_superres
-    uint32_t reserved1 : 4;
+    uint32_t reserved1 : 3;
 
     uint32_t num_tile_cols : 8; // horizontal tile numbers in frame, max is 64
     uint32_t num_tile_rows : 8; // vertical tile numbers in frame, max is 64
     uint32_t context_update_tile_id : 16; // which tile cdf will be seleted as
+    uint32_t tile_size_bytes_minus_1 : 2;
         // the backward update CDF,
         // MAXTILEROW=64, MAXTILECOL=64, 12bits
+    uint16_t tile_width_in_sbs_minus_1[65]; // valid for 0 <= i <= tile_cols
+    uint16_t tile_height_in_sbs_minus_1[65]; // valid for 0 <= i <= tile_cols
     uint16_t tile_row_start_sb[65]; // valid for 0 <= i <= tile_rows
     uint16_t tile_col_start_sb[65]; // valid for 0 <= i <= tile_cols
     uint32_t cdef_damping_minus_3 : 2; // controls the amount of damping in the
@@ -449,7 +442,10 @@ typedef struct VkParserAv1PictureData {
     uint32_t reduced_tx_set : 1; // whether the frame is  restricted to oa reduced
         // subset of the full set of transform types
     uint32_t loop_filter_delta_enabled : 1;
-    uint32_t reserved2 : 13; // reserved bits
+    uint32_t loop_filter_delta_update : 1;
+    uint32_t uniform_tile_spacing_flag : 1;
+    uint32_t enable_order_hint : 1;
+    uint32_t reserved2 : 11; // reserved bits
 
     // Quantization
     uint8_t base_qindex; // the maximum qp is 255
@@ -489,8 +485,11 @@ typedef struct VkParserAv1PictureData {
     int8_t loop_filter_mode_deltas[2];
 
     // loop restoration
-    uint8_t lr_type[3]; // 0: NONE, 1: WIENER, 2: SGR, 3: SWITCHABLE
+    uint8_t lr_type[3];
+    uint8_t FrameRestorationType[3]; // 0: NONE, 1: WIENER, 2: SGR, 3: SWITCHABLE
     uint8_t lr_unit_size[3]; // 0: 32,   1: 64,     2: 128, 3: 256
+    uint8_t lr_unit_shift;
+    uint8_t lr_uv_shift;
 
     uint8_t temporal_layer_id : 4; // temporal layer id
     uint8_t spatial_layer_id : 4; // spatial layer id
@@ -501,10 +500,15 @@ typedef struct VkParserAv1PictureData {
     // order: Last frame,Last2 frame,Last3 frame,Golden frame,BWDREF frame,ALTREF2
     // frame,ALTREF frame
     uint8_t primary_ref_frame;
-    uint8_t ref_frame[7];
-    VkPicIf* ref_frame_map[8];
+    uint8_t ref_frame[STD_VIDEO_AV1_REFS_PER_FRAME];
+    VkPicIf* ref_frame_map[STD_VIDEO_AV1_NUM_REF_FRAMES];
+    uint8_t ref_order_hint[STD_VIDEO_AV1_NUM_REF_FRAMES];
 
-    VkParserAv1GlobalMotionParameters ref_global_motion[7];
+    uint8_t refresh_frame_flags;
+
+    VkParserAv1GlobalMotionParameters ref_global_motion[STD_VIDEO_AV1_REFS_PER_FRAME];
+    
+    int slice_offsets_and_size[512]; // Max AV1 tiles (256) * 2
 } VkParserAv1PictureData;
 
 typedef struct VkParserPictureData {
