@@ -18,6 +18,8 @@
 #define _VP9_PROBMANAGER_H_
 
 #include <stdint.h>
+#include <climits>
+
 #include "VulkanVideoDecoder.h"
 
 typedef enum {
@@ -204,7 +206,6 @@ typedef enum {
 #define SEGMENT_ABSDATA 1
 #define MAXQ 255
 #define LOTS_OF_BITS 0x40000000
-#define CHAR_BIT 8
 #define BD_VALUE_SIZE ((int32_t)sizeof(VP9_BD_VALUE)*CHAR_BIT)
 
 #define VP9_ENTROPY_NODES 11
