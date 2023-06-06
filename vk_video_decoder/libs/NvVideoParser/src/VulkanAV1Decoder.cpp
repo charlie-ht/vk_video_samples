@@ -549,7 +549,7 @@ bool VulkanAV1Decoder::ParseOBUHeaderAndSize(const uint8_t* data, uint32_t datas
 
 bool VulkanAV1Decoder::ParseObuTemporalDelimiter()
 {
-    memset(m_pSliceOffsets, 0, sizeof(int)*MAX_TILES * 2);
+    memset(m_pSliceOffsets, 0, sizeof(int)*MAX_TILES);
     return true;
 }
 
