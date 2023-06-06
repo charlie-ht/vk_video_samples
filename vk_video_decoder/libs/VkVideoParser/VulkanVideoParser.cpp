@@ -1492,7 +1492,7 @@ uint32_t VulkanVideoParser::FillDpbH265State(
 
     int32_t numPocTotalCurr = 0;
     int32_t numPocStCurrBefore = 0;
-    const size_t maxNumPocStCurrBefore = sizeof(pStdPictureInfo->RefPicSetStCurrBefore) / sizeof(pStdPictureInfo->RefPicSetStCurrBefore[0]);
+    const size_t maxNumPocStCurrBefore = ARRAYSIZE(pStdPictureInfo->RefPicSetStCurrBefore);
     assert((size_t)pin->NumPocStCurrBefore <= maxNumPocStCurrBefore);
     if ((size_t)pin->NumPocStCurrBefore > maxNumPocStCurrBefore) {
         fprintf(stderr, "\nERROR: FillDpbH265State() pin->NumPocStCurrBefore(%d) must be smaller than maxNumPocStCurrBefore(%zd)\n", pin->NumPocStCurrBefore, maxNumPocStCurrBefore);
@@ -1512,7 +1512,7 @@ uint32_t VulkanVideoParser::FillDpbH265State(
     }
 
     int32_t numPocStCurrAfter = 0;
-    const size_t maxNumPocStCurrAfter = sizeof(pStdPictureInfo->RefPicSetStCurrAfter) / sizeof(pStdPictureInfo->RefPicSetStCurrAfter[0]);
+    const size_t maxNumPocStCurrAfter = ARRAYSIZE(pStdPictureInfo->RefPicSetStCurrAfter);
     assert((size_t)pin->NumPocStCurrAfter <= maxNumPocStCurrAfter);
     if ((size_t)pin->NumPocStCurrAfter > maxNumPocStCurrAfter) {
         fprintf(stderr, "\nERROR: FillDpbH265State() pin->NumPocStCurrAfter(%d) must be smaller than maxNumPocStCurrAfter(%zd)\n", pin->NumPocStCurrAfter, maxNumPocStCurrAfter);
@@ -1532,7 +1532,7 @@ uint32_t VulkanVideoParser::FillDpbH265State(
     }
 
     int32_t numPocLtCurr = 0;
-    const size_t maxNumPocLtCurr = sizeof(pStdPictureInfo->RefPicSetLtCurr) / sizeof(pStdPictureInfo->RefPicSetLtCurr[0]);
+    const size_t maxNumPocLtCurr = ARRAYSIZE(pStdPictureInfo->RefPicSetLtCurr);
     assert((size_t)pin->NumPocLtCurr <= maxNumPocLtCurr);
     if ((size_t)pin->NumPocLtCurr > maxNumPocLtCurr) {
         fprintf(stderr, "\nERROR: FillDpbH265State() pin->NumPocLtCurr(%d) must be smaller than maxNumPocLtCurr(%zd)\n", pin->NumPocLtCurr, maxNumPocLtCurr);
@@ -1792,7 +1792,7 @@ bool VulkanVideoParser::DecodePicture(
             pStdPictureInfo->PicOrderCnt[pd->bottom_field_flag] = pin->CurrFieldOrderCnt[pd->bottom_field_flag];
         }
 
-        const uint32_t maxDpbInputSlots = sizeof(pin->dpb) / sizeof(pin->dpb[0]);
+        const uint32_t maxDpbInputSlots = ARRAYSIZE(pin->dpb);
         pCurrFrameDecParams->numGopReferenceSlots = FillDpbH264State(
             pd, pin->dpb, maxDpbInputSlots, pDpbRefList,
             VkParserPerFrameDecodeParameters::MAX_DPB_REF_SLOTS, // 16 reference pictures
