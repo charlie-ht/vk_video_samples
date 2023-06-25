@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            // Resolved by CMake Tools:
+            "program": "${command:cmake.launchTargetPath}",
+            // "args": ["-i", "${env:HOME}/video-tests/av1-1-b8-01-size-16x32.ivf", "-c", "1", "--noPresent", "-o", "/tmp/nvidia.yuv"],
+            "args": ["-i", "${env:HOME}/video-tests/only-tile-rows.ivf", "-c", "5", "--noPresent", "-o", "/tmp/nvidia.yuv"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    // add the directory where our target was built to the PATHs
+                    // it gets resolved by CMake Tools:
+                    "name": "VK_ICD_FILENAMES",
+                    "value": "${env:HOME}/cts/root/share/vulkan/icd.d/radeon_icd.x86_64.json"
+                },
+                {
+                    "name": "RADV_PERFTEST",
+                    "value": "video_decode"
+                }
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}
