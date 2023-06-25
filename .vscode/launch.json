@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(lldb) Launch AMD",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": ["-i", "${env:HOME}/video-tests/basic-8.ivf", "-c", "1", "--noPresent", "-o", "/tmp/nvidia.yuv"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "VK_ICD_FILENAMES": "${env:HOME}/cts/root/share/vulkan/icd.d/radeon_icd.x86_64.json",
+                "RADV_PERFTEST": "video_decode",
+                //"RADV_DEBUG": "videoarraypath",
+                "VK_LAYER_SETTINGS_PATH": "${workspaceFolder}/data/vk_layer_settings.ini",
+                "VK_LAYER_PATH": "${env:HOME}/cts/root/share/vulkan/explicit_layer.d:${env:HOME}/cts/root/etc/vulkan/explicit_layer.d",
+                "LD_LIBRARY_PATH": "${env:HOME}/cts/root/lib:/home/cturner/cts/root/lib/x86_64-linux-gnu"
+            },
+        },
+        {
+            "name": "(lldb) Launch NVIDIA",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": ["-i", "${env:HOME}/video-tests/basic-8.ivf", "-c", "1", "--noPresent", "-o", "/tmp/nvidia.yuv"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "VK_LAYER_SETTINGS_PATH": "/home/cturner/cts/vk_layer_settings.txt",
+                "VK_ICD_PATH": "/etc/vulkan/icd.d/nvidia_icd.json",
+                "VK_LAYER_PATH": "${env:HOME}/cts/root/share/vulkan/explicit_layer.d:${env:HOME}/cts/root/etc/vulkan/explicit_layer.d",
+                //"VK_INSTANCE_LAYERS": "VK_LAYER_LUNARG_gfxreconstruct",
+                "LD_LIBRARY_PATH": "${env:HOME}/cts/root/lib:/home/cturner/cts/root/lib/x86_64-linux-gnu"
+            },
+        },
+    ]
+}
