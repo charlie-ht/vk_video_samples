@@ -2273,7 +2273,7 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
         case AV1_OBU_SEQUENCE_HEADER:
             ParseObuSequenceHeader();
             break;
-            case AV1_OBU_FRAME_HEADER:
+        case AV1_OBU_FRAME_HEADER:
         case AV1_OBU_FRAME:
             ParseObuFrameHeader();
             if (show_existing_frame) break;
