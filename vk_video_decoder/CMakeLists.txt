@@ -1,7 +1,7 @@
 # The name of our project is "VULKAN_VIDEO_TESTS". CMakeLists files in this project can
 # refer to the root source directory of the project as ${VULKAN_VIDEO_TESTS_SOURCE_DIR} and
 # to the root binary directory of the project as ${VULKAN_BINARY_DIR}.
-cmake_minimum_required(VERSION 2.8.11)
+cmake_minimum_required(VERSION 3.0)
 
 # This must come before the project command.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment version")
