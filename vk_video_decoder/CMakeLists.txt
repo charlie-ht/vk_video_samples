@@ -168,7 +168,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(DEMOS_WSI_SELECTION "XCB" CACHE STRING "Select WSI target for demos (XCB, XLIB, WAYLAND, MIR, DISPLAY)")
 
     if (BUILD_WSI_XCB_SUPPORT)
+        # Workaround this spurious warning, which for this project is not an issue,
+        #
+        # The package name passed to `find_package_handle_standard_args` (xcb) does not match the name of the calling package (XCB).  This can lead to problems
+        # in calling code that expects `find_package` result variables (e.g.,`_FOUND`) to follow a certain pattern.
+        set(FPHSA_NAME_MISMATCHED 1)
         find_package(XCB REQUIRED)
+        unset(FPHSA_NAME_MISMATCHED)
     endif()
 
     if (BUILD_WSI_XLIB_SUPPORT)
@@ -176,7 +182,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     endif()
 
     if (BUILD_WSI_WAYLAND_SUPPORT)
+        # See comments above for XCB
+        set(FPHSA_NAME_MISMATCHED 1)
         find_package(Wayland REQUIRED)
+        unset(FPHSA_NAME_MISMATCHED)
         include_directories(${WAYLAND_CLIENT_INCLUDE_DIR})
     endif()
 
