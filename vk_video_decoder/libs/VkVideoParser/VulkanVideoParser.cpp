@@ -2110,7 +2110,7 @@ bool VulkanVideoParser::DecodePicture(
         flags->render_and_frame_size_different = 0; // ???
         flags->allow_screen_content_tools = pin->allow_screen_content_tools;
         flags->is_filter_switchable = pin->is_filter_switchable;
-        flags->force_integer_mv = 0; // pin->force_integer_mv;
+        flags->force_integer_mv = pin->force_integer_mv;
         flags->frame_size_override_flag = 0; // ??
         flags->buffer_removal_time_present_flag = 0; // ??
         flags->allow_intrabc = pin->allow_intrabc;
