@@ -52,7 +52,7 @@ public:
     {
         return  (videoCodecOperations & (VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR |
                                          VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR |
-                                         VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA |
+                                         VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR |
                                          VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_EXT |
                                          VK_VIDEO_CODEC_OPERATION_ENCODE_H265_BIT_EXT));
     }
@@ -91,9 +91,9 @@ public:
             }
             m_profile.pNext = &m_h265DecodeProfile;
             m_h265DecodeProfile.pNext = NULL;
-        } else if (m_profile.videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA) {
-            VkVideoDecodeAV1ProfileInfoMESA const * pProfileExt = (VkVideoDecodeAV1ProfileInfoMESA const *)pVideoProfileExt;
-            if (pProfileExt && (pProfileExt->sType != VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_MESA)) {
+        } else if (m_profile.videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
+            VkVideoDecodeAV1ProfileInfoKHR const * pProfileExt = (VkVideoDecodeAV1ProfileInfoKHR const *)pVideoProfileExt;
+            if (pProfileExt && (pProfileExt->sType != VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR)) {
                 m_profile.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
                 return false;
             }
@@ -102,7 +102,7 @@ public:
             } else {
                 //  Use default ext profile parameters
                 m_av1DecodeProfile.sType         = VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR;
-                m_av1DecodeProfile.stdProfileIdc = STD_VIDEO_AV1_MESA_PROFILE_MAIN; // @review: why are we hardcoding profiles here, they should come from the parser.
+                m_av1DecodeProfile.stdProfile = STD_VIDEO_AV1_PROFILE_MAIN; // @review: why are we hardcoding profiles here, they should come from the parser.
             }
             m_profile.pNext = &m_av1DecodeProfile;
             m_av1DecodeProfile.pNext = NULL;
@@ -173,7 +173,7 @@ public:
 
         VkVideoDecodeH264ProfileInfoKHR decodeH264ProfilesRequest;
         VkVideoDecodeH265ProfileInfoKHR decodeH265ProfilesRequest;
-        VkVideoDecodeAV1ProfileInfoMESA decodeAV1ProfilesRequest;
+        VkVideoDecodeAV1ProfileInfoKHR  decodeAV1ProfilesRequest;
         VkVideoEncodeH264ProfileInfoEXT encodeH264ProfilesRequest;
         VkVideoEncodeH265ProfileInfoEXT encodeH265ProfilesRequest;
         VkBaseInStructure* pVideoProfileExt = NULL;
@@ -186,19 +186,19 @@ public:
                                                        (StdVideoH264ProfileIdc)videoH26xProfileIdc;
             decodeH264ProfilesRequest.pictureLayout = VK_VIDEO_DECODE_H264_PICTURE_LAYOUT_INTERLACED_INTERLEAVED_LINES_BIT_KHR;
             pVideoProfileExt = (VkBaseInStructure*)&decodeH264ProfilesRequest;
-        } else if (videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA) {
-            decodeAV1ProfilesRequest.sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_MESA;
+        } else if (videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
+            decodeAV1ProfilesRequest.sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR;
             decodeAV1ProfilesRequest.pNext = nullptr;
-            // @fixme: The MESA spec doesn't follow the same pattern for profile naming, 0 is valid profile for example.
+            // @fixme: The KHR spec doesn't follow the same pattern for profile naming, 0 is valid profile for example.
             switch (videoH26xProfileIdc) {
-            case STD_VIDEO_AV1_MESA_PROFILE_MAIN:
-            case STD_VIDEO_AV1_MESA_PROFILE_HIGH:
-            case STD_VIDEO_AV1_MESA_PROFILE_PROFESSIONAL:
+            case STD_VIDEO_AV1_PROFILE_MAIN:
+            case STD_VIDEO_AV1_PROFILE_HIGH:
+            case STD_VIDEO_AV1_PROFILE_PROFESSIONAL:
                 break;
             default:
                 assert(false && "Bad profile IDC");
             }
-            decodeAV1ProfilesRequest.stdProfileIdc = (StdVideoAV1MESAProfile)videoH26xProfileIdc;
+            decodeAV1ProfilesRequest.stdProfile = (StdVideoAV1Profile)videoH26xProfileIdc;
             pVideoProfileExt = (VkBaseInStructure*)&decodeAV1ProfilesRequest;
         } else if (videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) {
             decodeH265ProfilesRequest.sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_H265_PROFILE_INFO_KHR;
@@ -287,9 +287,9 @@ public:
         }
     }
 
-    const VkVideoDecodeAV1ProfileInfoMESA* GetDecodeAV1Profile() const
+    const VkVideoDecodeAV1ProfileInfoKHR* GetDecodeAV1Profile() const
     {
-        if (m_av1DecodeProfile.sType == VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_MESA) {
+        if (m_av1DecodeProfile.sType == VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_KHR) {
             return &m_av1DecodeProfile;
         } else {
             return NULL;
@@ -550,7 +550,7 @@ public:
             return "decode h.264";
         case VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR:
             return "decode h.265";
-        case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA:
+        case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR:
             return "decode av1";
         case VK_VIDEO_CODEC_OPERATION_ENCODE_H264_BIT_EXT:
             return "encode h.264";
@@ -653,7 +653,7 @@ private:
     {
         VkVideoDecodeH264ProfileInfoKHR m_h264DecodeProfile;
         VkVideoDecodeH265ProfileInfoKHR m_h265DecodeProfile;
-        VkVideoDecodeAV1ProfileInfoMESA m_av1DecodeProfile;
+        VkVideoDecodeAV1ProfileInfoKHR  m_av1DecodeProfile;
         VkVideoEncodeH264ProfileInfoEXT m_h264EncodeProfile;
         VkVideoEncodeH265ProfileInfoEXT m_h265EncodeProfile;
     };

@@ -224,7 +224,7 @@ bool VulkanAV1Decoder::end_of_picture(const uint8_t* pdataIn, uint32_t dataSize,
 
     m_pVkPictureData->firstSliceIndex = 0;
     m_pVkPictureData->CodecSpecific.av1 = m_PicData;
-    m_pVkPictureData->intra_pic_flag = m_PicData.frame_type == AV1_KEY_FRAME;
+    m_pVkPictureData->intra_pic_flag = m_PicData.frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY;
 
     if (pbSideDataIn != nullptr && sideDataSize != 0) {
         m_pVkPictureData->pSideData = pbSideDataIn;
@@ -249,6 +249,7 @@ bool VulkanAV1Decoder::end_of_picture(const uint8_t* pdataIn, uint32_t dataSize,
         // "WARNING: no valid render target for current picture
     }
 
+    // decode_frame_wrapup
     UpdateFramePointers();
     if (m_PicData.show_frame && !bSkipped) {
         if (m_pFGSPic) {
@@ -291,7 +292,7 @@ bool VulkanAV1Decoder::BeginPicture(VkParserPictureData* pnvpd)
     av1->mono_chrome                    = sps->color_config.flags.mono_chrome;
     av1->subsampling_x                  = sps->color_config.subsampling_x;
     av1->subsampling_y                  = sps->color_config.subsampling_y;
-    av1->bit_depth_minus8               = sps->color_config.bit_depth - 8;
+    av1->bit_depth_minus8               = sps->color_config.BitDepth - 8;
     av1->enable_fgs                     = sps->flags.film_grain_params_present;
     av1->primary_ref_frame              = primary_ref_frame;
     av1->temporal_layer_id              = temporal_id;
@@ -299,7 +300,7 @@ bool VulkanAV1Decoder::BeginPicture(VkParserPictureData* pnvpd)
     av1->enable_order_hint              = sps->flags.enable_order_hint;
 
     VkParserSequenceInfo nvsi = m_ExtSeqInfo;
-    nvsi.eCodec         = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA;
+    nvsi.eCodec         = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
     nvsi.nChromaFormat  = av1->mono_chrome ? 0 : (av1->subsampling_x && av1->subsampling_y) ? 1 : (!av1->subsampling_x && !av1->subsampling_y) ? 3 : 2;
     nvsi.nMaxWidth      = (sps->max_frame_width_minus_1 + 2) & ~1;
     nvsi.nMaxHeight     = (sps->max_frame_height_minus_1 + 2) & ~1;
@@ -393,7 +394,7 @@ void VulkanAV1Decoder::UpdateFramePointers()
             m_pBuffers[ref_index].showable_frame = showable_frame;
             m_pBuffers[ref_index].fgs_buffer = showable_frame ? m_pFGSPic : nullptr;
 
-            m_pBuffers[ref_index].frame_type = (AV1_FRAME_TYPE)pic_info->frame_type;
+            m_pBuffers[ref_index].frame_type = (StdVideoAV1FrameType)pic_info->frame_type;
             // film grain
             memcpy(&m_pBuffers[ref_index].film_grain_params, &pic_info->fgs, sizeof(av1_film_grain_s));
             // global motion
@@ -592,7 +593,7 @@ int VulkanAV1Decoder::ChooseOperatingPoint()
         VkParserOperatingPointInfo OPInfo;
         memset(&OPInfo, 0, sizeof(OPInfo));
 
-        OPInfo.eCodec = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA;
+        OPInfo.eCodec = (VkVideoCodecOperationFlagBitsKHR)VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR;
         OPInfo.av1.operating_points_cnt = m_sps->operating_points_cnt_minus_1 + 1;
         for (int i = 0; i < OPInfo.av1.operating_points_cnt; i++) {
             OPInfo.av1.operating_points_idc[i] = m_sps->operating_point_idc[i];
@@ -801,13 +802,13 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
     bool high_bitdepth = u(1);
     if (sps->profile == AV1_PROFILE_2 && high_bitdepth) {
         const bool twelve_bit = u(1);
-        sps->color_config.bit_depth = twelve_bit ? 12 : 10;
+        sps->color_config.BitDepth = twelve_bit ? 12 : 10;
     } else if (sps->profile <= AV1_PROFILE_2) {
-        sps->color_config.bit_depth = high_bitdepth ? 10 : 8;
+        sps->color_config.BitDepth = high_bitdepth ? 10 : 8;
     } else {
         // Unsupported profile/bit-depth combination
     }
-    sps->color_config.bit_depth = sps->color_config.bit_depth;
+    sps->color_config.BitDepth = sps->color_config.BitDepth;
     sps->color_config.flags.color_range = sps->color_config.flags.color_range;
     sps->color_config.flags.separate_uv_delta_q = sps->color_config.flags.separate_uv_delta_q;
     sps->color_config.subsampling_x = sps->color_config.subsampling_x;
@@ -842,7 +843,7 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
             } else if (sps->profile == 1) {
                 sps->color_config.subsampling_x = sps->color_config.subsampling_y = 0;// 444
             } else {
-                if (sps->color_config.bit_depth == 12) {
+                if (sps->color_config.BitDepth == 12) {
                     sps->color_config.subsampling_x = u(1);
                     if (sps->color_config.subsampling_x) {
                         sps->color_config.subsampling_y = u(1);
@@ -1002,7 +1003,7 @@ bool VulkanAV1Decoder::ReadFilmGrainParams()
         }
 
         fgp->grain_seed = u(16);
-        if (pic_info->frame_type == AV1_INTER_FRAME) {
+        if (pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_INTER) {
             fgp->update_grain = u(1);
         } else {
             fgp->update_grain = 1;
@@ -1788,7 +1789,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
         show_existing_frame = 0;
         showable_frame = 0;
         pic_info->show_frame = 1;
-        pic_info->frame_type = AV1_KEY_FRAME;
+        pic_info->frame_type = STD_VIDEO_AV1_FRAME_TYPE_KEY;
         pic_info->error_resilient_mode = 1;
     } else {
         uint8_t reset_decoder_state = 0;
@@ -1815,7 +1816,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
                 return false;
             }
 
-            reset_decoder_state = m_pBuffers[show_existing_frame_index].frame_type == AV1_KEY_FRAME;
+            reset_decoder_state = m_pBuffers[show_existing_frame_index].frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY;
             pic_info->loop_filter_level[0] = pic_info->loop_filter_level[1] = 0;
             pic_info->show_frame = 1;
             showable_frame = m_pBuffers[show_existing_frame_index].showable_frame;
@@ -1826,7 +1827,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
 
             if (reset_decoder_state) {
                 showable_frame = 0;
-                pic_info->frame_type = AV1_KEY_FRAME;
+                pic_info->frame_type = STD_VIDEO_AV1_FRAME_TYPE_KEY;
                 refresh_frame_flags = (1 << NUM_REF_FRAMES) - 1;
                 // load loop filter params
                 memcpy(pic_info->loop_filter_ref_deltas, m_pBuffers[show_existing_frame_index].lf_ref_delta, sizeof(lf_ref_delta_default));
@@ -1851,23 +1852,23 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
 
             return true;
         }
-        pic_info->frame_type = (AV1_FRAME_TYPE)u(2);
-        intra_only = pic_info->frame_type == AV1_INTRA_ONLY_FRAME;
+        pic_info->frame_type = (StdVideoAV1FrameType)u(2);
+        intra_only = pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_INTRA_ONLY;
         pic_info->show_frame = u(1);
         if (pic_info->show_frame) {
             if (sps->decoder_model_info_present && timing_info.equal_picture_interval == 0) {
                 tu_presentation_delay = u(buffer_model.frame_presentation_time_length);
             }
-            showable_frame = pic_info->frame_type != AV1_KEY_FRAME;
+            showable_frame = pic_info->frame_type != STD_VIDEO_AV1_FRAME_TYPE_KEY;
         } else {
             showable_frame = u(1);
         }
 
-        pic_info->error_resilient_mode = (pic_info->frame_type == AV1_SWITCH_FRAME || (pic_info->frame_type == AV1_KEY_FRAME && pic_info->show_frame)) ? 1 : u(1);
+        pic_info->error_resilient_mode = (pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_SWITCH || (pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY && pic_info->show_frame)) ? 1 : u(1);
     }
 
 
-    if (pic_info->frame_type == AV1_KEY_FRAME && pic_info->show_frame) {
+    if (pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY && pic_info->show_frame) {
         for (int i = 0; i < NUM_REF_FRAMES; i++) {
             RefValid[i] = 0;
             RefOrderHint[i] = 0;
@@ -1906,12 +1907,12 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
             int frame_id_length = sps->frame_id_length;
             int diff_len = sps->delta_frame_id_length;
             int prev_frame_id = 0;
-            if (!(pic_info->frame_type == AV1_KEY_FRAME && pic_info->show_frame)) {
+            if (!(pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY && pic_info->show_frame)) {
                 prev_frame_id = current_frame_id;
             }
             current_frame_id = u(frame_id_length);
 
-            if (!(pic_info->frame_type == AV1_KEY_FRAME && pic_info->show_frame)) {
+            if (!(pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY && pic_info->show_frame)) {
                 int diff_frame_id = 0;
                 if (current_frame_id > prev_frame_id) {
                     diff_frame_id = current_frame_id - prev_frame_id;
@@ -1926,7 +1927,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
             }
             // Mark ref frames not valid for referencing 
             for (int i = 0; i < NUM_REF_FRAMES; i++) {
-                if (pic_info->frame_type == AV1_KEY_FRAME && pic_info->show_frame) {
+                if (pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY && pic_info->show_frame) {
                     RefValid[i] = 0;
                 } else if (current_frame_id > (1 << diff_len)) {
                     if (ref_frame_id[i] > current_frame_id ||
@@ -1942,7 +1943,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
             current_frame_id = 0;
         }
 
-        frame_size_override_flag = pic_info->frame_type == AV1_SWITCH_FRAME ? 1 : u(1);
+        frame_size_override_flag = pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_SWITCH ? 1 : u(1);
         //order_hint
         frame_offset = sps->flags.enable_order_hint ? u(sps->order_hint_bits_minus_1 + 1) : 0;
 
@@ -1970,7 +1971,7 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
             }
         }
     }
-    if (pic_info->frame_type == AV1_KEY_FRAME) {
+    if (pic_info->frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY) {
         if (!pic_info->show_frame) {
             refresh_frame_flags = u(8);
         } else {

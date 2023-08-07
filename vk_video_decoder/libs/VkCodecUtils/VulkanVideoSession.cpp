@@ -61,7 +61,7 @@ VkResult VulkanVideoSession::Create(const VulkanDeviceContext* vkDevCtx,
         createInfo.pStdHeaderVersion = &h265DecodeStdExtensionVersion;
         break;
 #ifdef ENABLE_AV1_DECODER
-    case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA:
+    case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR:
         createInfo.pStdHeaderVersion = &av1StdExtensionVersion;
         break;
 #endif

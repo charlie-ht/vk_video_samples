@@ -43,7 +43,7 @@ const char* VkVideoDecoder::GetVideoCodecString(VkVideoCodecOperationFlagBitsKHR
         { VK_VIDEO_CODEC_OPERATION_DECODE_VP9_BIT_KHR, "VP9" },
 #endif // VK_EXT_video_decode_vp9
 #ifdef vulkan_video_codec_av1std
-        { VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA, "AV1" },
+        { VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR, "AV1" },
 #endif // VK_EXT_video_decode_av1
     };
 
@@ -123,7 +123,7 @@ int32_t VkVideoDecoder::StartVideoSequence(VkParserDetectedVideoFormat* pVideoFo
             VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR
             | VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR
 #ifdef ENABLE_AV1_DECODER
-            | VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA
+            | VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR
 #endif
     );
     assert(videoCodecs != VK_VIDEO_CODEC_OPERATION_NONE_KHR);
@@ -430,7 +430,7 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
     // const uint8_t* ptr = pCurrFrameDecParams->bitstreamData->GetReadOnlyDataPtr(0, maxSize);
     // printf("Charlie:: NVIDIA BEFORE: bitstreamDataLen= %d max=%d\n", 	pCurrFrameDecParams->bitstreamDataLen, maxSize);
     // for (int i = 0 ; i< pCurrFrameDecParams->bitstreamDataLen; i++)
-    // 	printf("%04d: %02x\n ", i, ptr[i]);
+    // 	printf("0x%02x, ", ptr[i]);
     // printf("\n");
 
     // uint8_t* bitstreamDataPtr = pCurrFrameDecParams->bitstreamData->GetDataPtr(0, maxSize);
@@ -649,7 +649,7 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
                     " with ID: (" << pOwnerPictureParameters->GetId() << ")" <<
                     " for SPS: " <<  spsId << ", PPS: " << ppsId << std::endl;
             }
-        } else if (m_videoFormat.codec == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA) { // AV1
+        } else if (m_videoFormat.codec == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) { // AV1
             VkSharedBaseObj<VkVideoRefCountBase> currentVkPictureParameters;
             bool valid = pCurrFrameDecParams->pStdAv1Sps->GetClientObject(currentVkPictureParameters);
             assert(valid);
@@ -927,7 +927,7 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
         assert(result == VK_SUCCESS);
     }
 
-    const bool checkDecodeStatus = false; // Check the queries
+    const bool checkDecodeStatus = true; // Check the queries
     if (checkDecodeStatus && (frameSynchronizationInfo.queryPool != VK_NULL_HANDLE)) {
         VkQueryResultStatusKHR decodeStatus;
         result = m_vkDevCtx->GetQueryPoolResults(*m_vkDevCtx,

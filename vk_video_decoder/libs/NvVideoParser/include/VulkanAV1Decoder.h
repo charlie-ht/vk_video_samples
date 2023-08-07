@@ -180,14 +180,6 @@ typedef enum _AV1_OBU_TYPE
     AV1_OBU_PADDING                 = 15,
 } AV1_OBU_TYPE;
 
-typedef enum _AV1_FRAME_TYPE
-{
-    AV1_KEY_FRAME           = 0,
-    AV1_INTER_FRAME         = 1,
-    AV1_INTRA_ONLY_FRAME    = 2,
-    AV1_SWITCH_FRAME        = 3,
-} AV1_FRAME_TYPE;
-
 enum COLOR_PRIMARIES
 {
     CP_BT_709 = 1,
@@ -347,10 +339,10 @@ typedef struct _AV1ObuHeader
 } AV1ObuHeader;
 
 // Sequence header structure.
-struct av1_seq_param_s : public StdVideoPictureParametersSet, public StdVideoAV1MESASequenceHeader
+struct av1_seq_param_s : public StdVideoPictureParametersSet, public StdVideoAV1SequenceHeader
 {
     static const char* m_refClassId;
-    AV1_PROFILE     profile;                        // should use StdVideoAV1MESASequenceHeader.seq_profile // features that can be used like bit-depth, monochrome and chroma subsampling
+    AV1_PROFILE     profile;                        // should use StdVideoAV1SequenceHeader.seq_profile // features that can be used like bit-depth, monochrome and chroma subsampling
     uint8_t         frame_id_length{};  // length minus _2 ...
     uint8_t         delta_frame_id_length{};
     int32_t         force_screen_content_tools{}; // 0 - force off
@@ -394,7 +386,7 @@ struct av1_seq_param_s : public StdVideoPictureParametersSet, public StdVideoAV1
         return 0; // There's only one active sequence header, the base class is overly specific to AVC/HEVC.
     }
 
-    const StdVideoAV1MESASequenceHeader*    GetStdAV1Sps() const override { return this; }
+    const StdVideoAV1SequenceHeader*    GetStdAV1Sps() const override { return this; }
 
     virtual const char* GetRefClassId() const { return m_refClassId; }
 
@@ -412,7 +404,7 @@ struct av1_seq_param_s : public StdVideoPictureParametersSet, public StdVideoAV1
 
     explicit av1_seq_param_s(uint64_t updateSequenceCount)
     : StdVideoPictureParametersSet(TYPE_AV1_SPS, AV1_SPS_TYPE, m_refClassId, updateSequenceCount)
-    , StdVideoAV1MESASequenceHeader()
+    , StdVideoAV1SequenceHeader()
     , profile(AV1_PROFILE_0)
     {
     }
@@ -507,7 +499,7 @@ typedef struct _av1_ref_frames_s
 {
     VkPicIf*                buffer;
     VkPicIf*                fgs_buffer;
-    AV1_FRAME_TYPE          frame_type;
+    StdVideoAV1FrameType    frame_type;
     av1_film_grain_s        film_grain_params;
     AV1WarpedMotionParams   global_models[GM_GLOBAL_MODELS_PER_FRAME];
     int8_t                  lf_ref_delta[NUM_REF_FRAMES];
@@ -687,7 +679,7 @@ protected:
     uint16_t                Read_primitive_subexpfin(uint16_t n, uint16_t k);
     uint16_t                Read_primitive_quniform(uint16_t n);
     void                    UpdateFramePointers();
-    bool                    IsFrameIntra() { return (m_PicData.frame_type == AV1_INTRA_ONLY_FRAME || m_PicData.frame_type == AV1_KEY_FRAME); }
+    bool                    IsFrameIntra() { return (m_PicData.frame_type == STD_VIDEO_AV1_FRAME_TYPE_INTRA_ONLY || m_PicData.frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY); }
     int32_t                 ChooseOperatingPoint();
     bool                    AddBuffertoOutputQueue(VkPicIf* pDispPic, bool bShowableFrame);
     void                    AddBuffertoDispQueue(VkPicIf* pDispPic);

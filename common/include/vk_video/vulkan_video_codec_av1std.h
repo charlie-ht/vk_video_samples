@@ -1,400 +1,349 @@
-/* Copyright 2023 Lynne
- * Copyright 2023 Dave Airlie
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #ifndef VULKAN_VIDEO_CODEC_AV1STD_H_
 #define VULKAN_VIDEO_CODEC_AV1STD_H_ 1
 
 /*
-** This header is NOT YET generated from the Khronos Vulkan XML API Registry.
+** Copyright 2015-2023 The Khronos Group Inc.
+**
+** SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
+** This header is generated from the Khronos Vulkan XML API Registry.
 **
 */
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+
+// vulkan_video_codec_av1std is a preprocessor guard. Do not pass it to API calls.
 #define vulkan_video_codec_av1std 1
+#include "vulkan_video_codecs_common.h"
+#define STD_VIDEO_AV1_NUM_REF_FRAMES      8
+#define STD_VIDEO_AV1_REFS_PER_FRAME      7
+#define STD_VIDEO_AV1_TOTAL_REFS_PER_FRAME 8
+#define STD_VIDEO_AV1_MAX_TILE_COLS       64
+#define STD_VIDEO_AV1_MAX_TILE_ROWS       64
+#define STD_VIDEO_AV1_MAX_SEGMENTS        8
+#define STD_VIDEO_AV1_SEG_LVL_MAX         8
+#define STD_VIDEO_AV1_PRIMARY_REF_NONE    7
+#define STD_VIDEO_AV1_SELECT_INTEGER_MV   2
 
-#define VK_MAKE_VIDEO_STD_VERSION(major, minor, patch) \
-   ((((uint32_t)(major)) << 22) | (((uint32_t)(minor)) << 12) | ((uint32_t)(patch)))
-#define VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_API_VERSION_0_1_0 VK_MAKE_VIDEO_STD_VERSION(0, 1, 0)
-#define VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_SPEC_VERSION VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_API_VERSION_0_1_0
-#define VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_EXTENSION_NAME "VK_STD_vulkan_video_codec_av1_decode"
+typedef enum StdVideoAV1Profile {
+    STD_VIDEO_AV1_PROFILE_MAIN = 0,
+    STD_VIDEO_AV1_PROFILE_HIGH = 1,
+    STD_VIDEO_AV1_PROFILE_PROFESSIONAL = 2,
+    STD_VIDEO_AV1_PROFILE_INVALID = 0x7FFFFFFF,
+    STD_VIDEO_AV1_PROFILE_MAX_ENUM = 0x7FFFFFFF
+} StdVideoAV1Profile;
 
-typedef enum StdVideoAV1MESAProfile {
-   STD_VIDEO_AV1_MESA_PROFILE_MAIN = 0,
-   STD_VIDEO_AV1_MESA_PROFILE_HIGH = 1,
-   STD_VIDEO_AV1_MESA_PROFILE_PROFESSIONAL = 2,
-} StdVideoAV1MESAProfile;
+typedef enum StdVideoAV1Level {
+    STD_VIDEO_AV1_LEVEL_2_0 = 0,
+    STD_VIDEO_AV1_LEVEL_2_1 = 1,
+    STD_VIDEO_AV1_LEVEL_2_2 = 2,
+    STD_VIDEO_AV1_LEVEL_2_3 = 3,
+    STD_VIDEO_AV1_LEVEL_3_0 = 4,
+    STD_VIDEO_AV1_LEVEL_3_1 = 5,
+    STD_VIDEO_AV1_LEVEL_3_2 = 6,
+    STD_VIDEO_AV1_LEVEL_3_3 = 7,
+    STD_VIDEO_AV1_LEVEL_4_0 = 8,
+    STD_VIDEO_AV1_LEVEL_4_1 = 9,
+    STD_VIDEO_AV1_LEVEL_4_2 = 10,
+    STD_VIDEO_AV1_LEVEL_4_3 = 11,
+    STD_VIDEO_AV1_LEVEL_5_0 = 12,
+    STD_VIDEO_AV1_LEVEL_5_1 = 13,
+    STD_VIDEO_AV1_LEVEL_5_2 = 14,
+    STD_VIDEO_AV1_LEVEL_5_3 = 15,
+    STD_VIDEO_AV1_LEVEL_6_0 = 16,
+    STD_VIDEO_AV1_LEVEL_6_1 = 17,
+    STD_VIDEO_AV1_LEVEL_6_2 = 18,
+    STD_VIDEO_AV1_LEVEL_6_3 = 19,
+    STD_VIDEO_AV1_LEVEL_7_0 = 20,
+    STD_VIDEO_AV1_LEVEL_7_1 = 21,
+    STD_VIDEO_AV1_LEVEL_7_2 = 22,
+    STD_VIDEO_AV1_LEVEL_7_3 = 23,
+    STD_VIDEO_AV1_LEVEL_INVALID = 0x7FFFFFFF,
+    STD_VIDEO_AV1_LEVEL_MAX_ENUM = 0x7FFFFFFF
+} StdVideoAV1Level;
 
-typedef enum StdVideoAV1MESALevel {
-    STD_VIDEO_AV1_MESA_LEVEL_2_0 = 0,
-    STD_VIDEO_AV1_MESA_LEVEL_2_1 = 1,
-    STD_VIDEO_AV1_MESA_LEVEL_2_2 = 2,
-    STD_VIDEO_AV1_MESA_LEVEL_2_3 = 3,
-    STD_VIDEO_AV1_MESA_LEVEL_3_0 = 4,
-    STD_VIDEO_AV1_MESA_LEVEL_3_1 = 5,
-    STD_VIDEO_AV1_MESA_LEVEL_3_2 = 6,
-    STD_VIDEO_AV1_MESA_LEVEL_3_3 = 7,
-    STD_VIDEO_AV1_MESA_LEVEL_4_0 = 8,
-    STD_VIDEO_AV1_MESA_LEVEL_4_1 = 9,
-    STD_VIDEO_AV1_MESA_LEVEL_4_2 = 10,
-    STD_VIDEO_AV1_MESA_LEVEL_4_3 = 11,
-    STD_VIDEO_AV1_MESA_LEVEL_5_0 = 12,
-    STD_VIDEO_AV1_MESA_LEVEL_5_1 = 13,
-    STD_VIDEO_AV1_MESA_LEVEL_5_2 = 14,
-    STD_VIDEO_AV1_MESA_LEVEL_5_3 = 15,
-    STD_VIDEO_AV1_MESA_LEVEL_6_0 = 16,
-    STD_VIDEO_AV1_MESA_LEVEL_6_1 = 17,
-    STD_VIDEO_AV1_MESA_LEVEL_6_2 = 18,
-    STD_VIDEO_AV1_MESA_LEVEL_6_3 = 19,
-    STD_VIDEO_AV1_MESA_LEVEL_7_0 = 20,
-    STD_VIDEO_AV1_MESA_LEVEL_7_1 = 21,
-    STD_VIDEO_AV1_MESA_LEVEL_7_2 = 22,
-    STD_VIDEO_AV1_MESA_LEVEL_7_3 = 23,
-    STD_VIDEO_AV1_MESA_LEVEL_MAX = 31,
-} StdVideoAV1MESALevel;
+typedef enum StdVideoAV1FrameType {
+    STD_VIDEO_AV1_FRAME_TYPE_KEY = 0,
+    STD_VIDEO_AV1_FRAME_TYPE_INTER = 1,
+    STD_VIDEO_AV1_FRAME_TYPE_INTRA_ONLY = 2,
+    STD_VIDEO_AV1_FRAME_TYPE_SWITCH = 3,
+    STD_VIDEO_AV1_FRAME_TYPE_INVALID = 0x7FFFFFFF,
+    STD_VIDEO_AV1_FRAME_TYPE_MAX_ENUM = 0x7FFFFFFF
+} StdVideoAV1FrameType;
 
-typedef struct StdVideoAV1MESAFilmGrainFlags {
-   uint8_t apply_grain;
-   uint8_t chroma_scaling_from_luma;
-   uint8_t overlap_flag;
-   uint8_t clip_to_restricted_range;
-} StdVideoAV1MESAFilmGrainFlags;
+typedef enum StdVideoAV1InterpolationFilter {
+    STD_VIDEO_AV1_INTERPOLATION_FILTER_EIGHTTAP = 0,
+    STD_VIDEO_AV1_INTERPOLATION_FILTER_EIGHTTAP_SMOOTH = 1,
+    STD_VIDEO_AV1_INTERPOLATION_FILTER_EIGHTTAP_SHARP = 2,
+    STD_VIDEO_AV1_INTERPOLATION_FILTER_BILINEAR = 3,
+    STD_VIDEO_AV1_INTERPOLATION_FILTER_SWITCHABLE = 4,
+    STD_VIDEO_AV1_INTERPOLATION_FILTER_INVALID = 0x7FFFFFFF,
+    STD_VIDEO_AV1_INTERPOLATION_FILTER_MAX_ENUM = 0x7FFFFFFF
+} StdVideoAV1InterpolationFilter;
 
-typedef struct StdVideoAV1MESAFilmGrainParameters {
-   StdVideoAV1MESAFilmGrainFlags flags;
-   uint32_t grain_scaling_minus_8;
-   uint32_t ar_coeff_lag;
-   uint32_t ar_coeff_shift_minus_6;
-   uint32_t grain_scale_shift;
+typedef enum StdVideoAV1TxMode {
+    STD_VIDEO_AV1_TX_MODE_ONLY_4X4 = 0,
+    STD_VIDEO_AV1_TX_MODE_LARGEST = 1,
+    STD_VIDEO_AV1_TX_MODE_SELECT = 2,
+    STD_VIDEO_AV1_TX_MODE_INVALID = 0x7FFFFFFF,
+    STD_VIDEO_AV1_TX_MODE_MAX_ENUM = 0x7FFFFFFF
+} StdVideoAV1TxMode;
+typedef struct StdVideoAV1ColorConfigFlags {
+    uint32_t    mono_chrome : 1;
+    uint32_t    color_range : 1;
+    uint32_t    separate_uv_delta_q : 1;
+    uint32_t    reserved : 29;
+} StdVideoAV1ColorConfigFlags;
 
-   uint16_t grain_seed;
-   uint8_t num_y_points;
-   uint8_t point_y_value[14];
-   uint8_t point_y_scaling[14];
+typedef struct StdVideoAV1ColorConfig {
+    StdVideoAV1ColorConfigFlags    flags;
+    uint8_t                        BitDepth;
+    uint8_t                        subsampling_x;
+    uint8_t                        subsampling_y;
+    uint8_t                        reserved1;
+} StdVideoAV1ColorConfig;
 
-   uint8_t num_cb_points;
-   uint8_t point_cb_value[10];
-   uint8_t point_cb_scaling[10];
+typedef struct StdVideoAV1TimingInfoFlags {
+    uint32_t    equal_picture_interval : 1;
+    uint32_t    reserved : 31;
+} StdVideoAV1TimingInfoFlags;
 
-   uint8_t num_cr_points;
-   uint8_t point_cr_value[10];
-   uint8_t point_cr_scaling[10];
+typedef struct StdVideoAV1TimingInfo {
+    StdVideoAV1TimingInfoFlags    flags;
+    uint32_t                      num_units_in_display_tick;
+    uint32_t                      time_scale;
+    uint32_t                      num_ticks_per_picture_minus_1;
+} StdVideoAV1TimingInfo;
 
-   int8_t ar_coeffs_y_plus_128[24];
-   int8_t ar_coeffs_cb_plus_128[25];
-   int8_t ar_coeffs_cr_plus_128[25];
-   uint8_t cb_mult;
-   uint8_t cb_luma_mult;
-   uint16_t cb_offset;
-   uint8_t cr_mult;
-   uint8_t cr_luma_mult;
-   uint16_t cr_offset;
-} StdVideoAV1MESAFilmGrainParameters;
+typedef struct StdVideoAV1LoopFilterFlags {
+    uint32_t    loop_filter_delta_enabled : 1;
+    uint32_t    loop_filter_delta_update : 1;
+    uint32_t    reserved : 30;
+} StdVideoAV1LoopFilterFlags;
 
-typedef struct StdVideoAV1MESAGlobalMotionFlags {
-    uint8_t gm_invalid;
-} StdVideoAV1MESAGlobalMotionFlags;
+typedef struct StdVideoAV1LoopFilter {
+    StdVideoAV1LoopFilterFlags    flags;
+    uint8_t                       loop_filter_level[4];
+    uint8_t                       loop_filter_sharpness;
+    int8_t                        loop_filter_ref_deltas[STD_VIDEO_AV1_TOTAL_REFS_PER_FRAME];
+    int8_t                        loop_filter_mode_deltas[2];
+    uint8_t                       reserved1[5];
+} StdVideoAV1LoopFilter;
 
-typedef struct StdVideoAV1MESAGlobalMotion {
-    StdVideoAV1MESAGlobalMotionFlags flags;
-    uint8_t gm_type;
-    uint32_t gm_params[6];
-} StdVideoAV1MESAGlobalMotion;
+typedef struct StdVideoAV1QuantizationFlags {
+    uint32_t    using_qmatrix : 1;
+    uint32_t    diff_uv_delta : 1;
+    uint32_t    reserved : 30;
+} StdVideoAV1QuantizationFlags;
 
-typedef struct StdVideoAV1MESALoopRestoration {
-    uint8_t lr_type[3];
-    uint8_t lr_unit_shift;
-    uint8_t lr_uv_shift;
-} StdVideoAV1MESALoopRestoration;
+typedef struct StdVideoAV1Quantization {
+    StdVideoAV1QuantizationFlags    flags;
+    uint8_t                         base_q_idx;
+    int8_t                          deltaQYDc;
+    int8_t                          deltaQUDc;
+    int8_t                          deltaQUAc;
+    int8_t                          deltaQVDc;
+    int8_t                          deltaQVAc;
+    uint8_t                         qm_y;
+    uint8_t                         qm_u;
+    uint8_t                         qm_v;
+    uint8_t                         reserved1[3];
+} StdVideoAV1Quantization;
 
-typedef struct StdVideoAV1MESATileInfoFlags {
-    uint8_t uniform_tile_spacing_flag;
-} StdVideoAV1MESATileInfoFlags;
+typedef struct StdVideoAV1Segmentation {
+    uint8_t    FeatureEnabled[STD_VIDEO_AV1_MAX_SEGMENTS];
+    int16_t    FeatureData[STD_VIDEO_AV1_MAX_SEGMENTS][STD_VIDEO_AV1_SEG_LVL_MAX];
+} StdVideoAV1Segmentation;
 
-typedef struct StdVideoAV1MESATileInfo {
-    StdVideoAV1MESATileInfoFlags flags;
-    uint8_t tile_cols;
-    uint8_t tile_rows;
-    uint8_t tile_start_col_sb[64];
-    uint8_t tile_start_row_sb[64];
-    uint8_t width_in_sbs_minus_1[64];
-    uint8_t height_in_sbs_minus_1[64];
-    uint16_t context_update_tile_id;
-    uint8_t tile_size_bytes_minus1;
-} StdVideoAV1MESATileInfo;
+typedef struct StdVideoAV1TileInfoFlags {
+    uint32_t    uniform_tile_spacing_flag : 1;
+    uint32_t    reserved : 31;
+} StdVideoAV1TileInfoFlags;
 
-typedef struct StdVideoAV1MESAQuantizationFlags {
-    uint8_t using_qmatrix;
-} StdVideoAV1MESAQuantizationFlags;
+typedef struct StdVideoAV1TileInfo {
+    StdVideoAV1TileInfoFlags    flags;
+    uint8_t                     tileCols;
+    uint8_t                     tileRows;
+    uint16_t                    context_update_tile_id;
+    const uint16_t*             MiColStarts;
+    const uint16_t*             MiRowStarts;
+    const uint16_t*             width_in_sbs_minus_1;
+    const uint16_t*             height_in_sbs_minus_1;
+    uint8_t                     tile_size_bytes_minus_1;
+} StdVideoAV1TileInfo;
 
-typedef struct StdVideoAV1MESAQuantization {
-    StdVideoAV1MESAQuantizationFlags flags;
-    uint8_t base_q_idx;
-    int8_t  delta_q_y_dc;
-    uint8_t diff_uv_delta;
-    int8_t  delta_q_u_dc;
-    int8_t  delta_q_u_ac;
-    int8_t  delta_q_v_dc;
-    int8_t  delta_q_v_ac;
-    uint8_t qm_y;
-    uint8_t qm_u;
-    uint8_t qm_v;
-} StdVideoAV1MESAQuantization;
+typedef struct StdVideoAV1CDEF {
+    uint8_t    cdef_damping_minus_3;
+    uint8_t    cdef_bits;
+    uint8_t    cdef_y_pri_strength[8];
+    uint8_t    cdef_y_sec_strength[8];
+    uint8_t    cdef_uv_pri_strength[8];
+    uint8_t    cdef_uv_sec_strength[8];
+} StdVideoAV1CDEF;
 
-typedef struct StdVideoAV1MESACDEF {
-    uint8_t damping_minus_3;
-    uint8_t bits;
-    uint8_t y_pri_strength[8];
-    uint8_t y_sec_strength[8];
-    uint8_t uv_pri_strength[8];
-    uint8_t uv_sec_strength[8];
-} StdVideoAV1MESACDEF;
+typedef struct StdVideoAV1LoopRestoration {
+    uint8_t    lr_type[3];
+    uint8_t    lr_unit_shift;
+    uint8_t    lr_uv_shift;
+    uint8_t    reserved1[3];
+} StdVideoAV1LoopRestoration;
 
-typedef struct StdVideoAV1MESADeltaQFlags {
-    uint8_t delta_lf_present;
-    uint8_t delta_lf_multi;
-} StdVideoAV1MESADeltaQFlags;
+typedef struct StdVideoAV1GlobalMotion {
+    uint8_t    GmType[STD_VIDEO_AV1_NUM_REF_FRAMES];
+    int32_t    gm_params[STD_VIDEO_AV1_NUM_REF_FRAMES][6];
+} StdVideoAV1GlobalMotion;
 
-typedef struct StdVideoAV1MESADeltaQ {
-    StdVideoAV1MESADeltaQFlags flags;
-    uint8_t delta_q_res;
-    uint8_t delta_lf_res;
-} StdVideoAV1MESADeltaQ;
+typedef struct StdVideoAV1FilmGrainFlags {
+    uint32_t    chroma_scaling_from_luma : 1;
+    uint32_t    overlap_flag : 1;
+    uint32_t    clip_to_restricted_range : 1;
+    uint32_t    reserved : 29;
+} StdVideoAV1FilmGrainFlags;
 
-typedef struct StdVideoAV1MESASegmentationFlags {
-    uint8_t enabled;
-    uint8_t update_map;
-    uint8_t temporal_update;
-    uint8_t update_data;
-} StdVideoAV1MESASegmentationFlags;
+typedef struct StdVideoAV1FilmGrain {
+    StdVideoAV1FilmGrainFlags    flags;
+    uint8_t                      grain_scaling_minus_8;
+    uint8_t                      ar_coeff_lag;
+    uint8_t                      ar_coeff_shift_minus_6;
+    uint8_t                      grain_scale_shift;
+    uint16_t                     grain_seed;
+    uint8_t                      num_y_points;
+    uint8_t                      point_y_value[14];
+    uint8_t                      point_y_scaling[14];
+    uint8_t                      num_cb_points;
+    uint8_t                      point_cb_value[10];
+    uint8_t                      point_cb_scaling[10];
+    uint8_t                      num_cr_points;
+    uint8_t                      point_cr_value[10];
+    uint8_t                      point_cr_scaling[10];
+    int8_t                       ar_coeffs_y_plus_128[24];
+    int8_t                       ar_coeffs_cb_plus_128[25];
+    int8_t                       ar_coeffs_cr_plus_128[25];
+    uint8_t                      cb_mult;
+    uint8_t                      cb_luma_mult;
+    uint16_t                     cb_offset;
+    uint8_t                      cr_mult;
+    uint8_t                      cr_luma_mult;
+    uint16_t                     cr_offset;
+} StdVideoAV1FilmGrain;
 
-typedef struct StdVideoAV1MESASegmentation {
-    StdVideoAV1MESASegmentationFlags flags;
-    uint8_t                      feature_enabled_bits[8];
-    int16_t                      feature_data[8][8];
-} StdVideoAV1MESASegmentation;
+typedef struct StdVideoAV1SequenceHeaderFlags {
+    uint32_t    still_picture : 1;
+    uint32_t    reduced_still_picture_header : 1;
+    uint32_t    use_128x128_superblock : 1;
+    uint32_t    enable_filter_intra : 1;
+    uint32_t    enable_intra_edge_filter : 1;
+    uint32_t    enable_interintra_compound : 1;
+    uint32_t    enable_masked_compound : 1;
+    uint32_t    enable_warped_motion : 1;
+    uint32_t    enable_dual_filter : 1;
+    uint32_t    enable_order_hint : 1;
+    uint32_t    enable_jnt_comp : 1;
+    uint32_t    enable_ref_frame_mvs : 1;
+    uint32_t    frame_id_numbers_present_flag : 1;
+    uint32_t    enable_superres : 1;
+    uint32_t    enable_cdef : 1;
+    uint32_t    enable_restoration : 1;
+    uint32_t    film_grain_params_present : 1;
+    uint32_t    timing_info_present_flag : 1;
+    uint32_t    initial_display_delay_present_flag : 1;
+    uint32_t    seq_choose_screen_content_tools : 1;
+    uint32_t    seq_force_screen_content_tools : 1;
+    uint32_t    seq_choose_integer_mv : 1;
+    uint32_t    seq_force_integer_mv : 1;
+    uint32_t    reserved : 9;
+} StdVideoAV1SequenceHeaderFlags;
 
-typedef struct StdVideoAV1MESALoopFilterFlags {
-    uint8_t delta_enabled;
-    uint8_t delta_update;
-} StdVideoAV1MESALoopFilterFlags;
+typedef struct StdVideoAV1SequenceHeader {
+    StdVideoAV1SequenceHeaderFlags    flags;
+    StdVideoAV1Profile                seq_profile;
+    uint8_t                           frame_width_bits_minus_1;
+    uint8_t                           frame_height_bits_minus_1;
+    uint16_t                          max_frame_width_minus_1;
+    uint16_t                          max_frame_height_minus_1;
+    uint8_t                           delta_frame_id_length_minus_2;
+    uint8_t                           additional_frame_id_length_minus_1;
+    uint8_t                           order_hint_bits_minus_1;
+    uint8_t                           seq_force_integer_mv;
+    uint8_t                           reserved1[6];
+    StdVideoAV1ColorConfig            color_config;
+    StdVideoAV1TimingInfo             timing_info;
+} StdVideoAV1SequenceHeader;
 
-typedef struct StdVideoAV1MESALoopFilter {
-    StdVideoAV1MESALoopFilterFlags flags;
-    uint8_t level[4];
-    uint8_t sharpness;
-    int8_t  ref_deltas[8];
-    int8_t  mode_deltas[2];
-} StdVideoAV1MESALoopFilter;
+typedef struct StdVideoAV1FrameHeaderFlags {
+    uint32_t    error_resilient_mode : 1;
+    uint32_t    disable_cdf_update : 1;
+    uint32_t    use_superres : 1;
+    uint32_t    render_and_frame_size_different : 1;
+    uint32_t    allow_screen_content_tools : 1;
+    uint32_t    is_filter_switchable : 1;
+    uint32_t    force_integer_mv : 1;
+    uint32_t    frame_size_override_flag : 1;
+    uint32_t    buffer_removal_time_present_flag : 1;
+    uint32_t    allow_intrabc : 1;
+    uint32_t    frame_refs_short_signaling : 1;
+    uint32_t    allow_high_precision_mv : 1;
+    uint32_t    is_motion_mode_switchable : 1;
+    uint32_t    use_ref_frame_mvs : 1;
+    uint32_t    disable_frame_end_update_cdf : 1;
+    uint32_t    allow_warped_motion : 1;
+    uint32_t    reduced_tx_set : 1;
+    uint32_t    reference_select : 1;
+    uint32_t    skip_mode_present : 1;
+    uint32_t    delta_q_present : 1;
+    uint32_t    delta_lf_present : 1;
+    uint32_t    delta_lf_multi : 1;
+    uint32_t    segmentation_enabled : 1;
+    uint32_t    segmentation_update_map : 1;
+    uint32_t    segmentation_temporal_update : 1;
+    uint32_t    segmentation_update_data : 1;
+    uint32_t    UsesLr : 1;
+    uint32_t    usesChromaLr : 1;
+    uint32_t    apply_grain : 1;
+    uint32_t    reserved : 3;
+} StdVideoAV1FrameHeaderFlags;
 
-typedef struct StdVideoAV1MESAFrameHeaderFlags {
-    uint8_t error_resilient_mode;
-    uint8_t disable_cdf_update;
-    uint8_t use_superres;
-    uint8_t render_and_frame_size_different;
-    uint8_t allow_screen_content_tools;
-    uint8_t is_filter_switchable;
-    uint8_t force_integer_mv;
-    uint8_t frame_size_override_flag;
-    uint8_t buffer_removal_time_present_flag;
-    uint8_t allow_intrabc;
-    uint8_t frame_refs_short_signaling;
-    uint8_t allow_high_precision_mv;
-    uint8_t is_motion_mode_switchable;
-    uint8_t use_ref_frame_mvs;
-    uint8_t disable_frame_end_update_cdf;
-    uint8_t allow_warped_motion;
-    uint8_t reduced_tx_set;
-    uint8_t reference_select;
-    uint8_t skip_mode_present;
-    uint8_t delta_q_present;
-    uint8_t UsesLr;
-} StdVideoAV1MESAFrameHeaderFlags;
+typedef struct StdVideoAV1FrameHeader {
+    StdVideoAV1FrameHeaderFlags       flags;
+    StdVideoAV1FrameType              frame_type;
+    uint32_t                          frame_presentation_time;
+    uint32_t                          display_frame_id;
+    uint32_t                          current_frame_id;
+    uint8_t                           frame_to_show_map_idx;
+    uint8_t                           order_hint;
+    uint8_t                           primary_ref_frame;
+    uint8_t                           refresh_frame_flags;
+    uint8_t                           ref_order_hint[STD_VIDEO_AV1_NUM_REF_FRAMES];
+    uint16_t                          frame_width_minus_1;
+    uint16_t                          frame_height_minus_1;
+    uint16_t                          render_width_minus_1;
+    uint16_t                          render_height_minus_1;
+    StdVideoAV1InterpolationFilter    interpolation_filter;
+    StdVideoAV1TxMode                 TxMode;
+    uint8_t                           coded_denom;
+    uint8_t                           delta_q_res;
+    uint8_t                           delta_lf_res;
+    uint8_t                           reserved1[5];
+    uint8_t                           SkipModeFrame[2];
+    int8_t                            ref_frame_idx[STD_VIDEO_AV1_REFS_PER_FRAME];
+    uint8_t                           delta_frame_id_minus_1[STD_VIDEO_AV1_REFS_PER_FRAME];
+    StdVideoAV1LoopFilter             loop_filter;
+    StdVideoAV1Quantization           quantization;
+    const StdVideoAV1Segmentation*    pSegmentation;
+    StdVideoAV1TileInfo               tile_info;
+    const StdVideoAV1CDEF*            pCDEF;
+    StdVideoAV1LoopRestoration        lr;
+    StdVideoAV1GlobalMotion           global_motion;
+    const StdVideoAV1FilmGrain*       pFilmGrain;
+} StdVideoAV1FrameHeader;
 
-typedef struct StdVideoAV1MESAFrameHeader {
-    StdVideoAV1MESAFrameHeaderFlags flags;
-
-    uint32_t frame_presentation_time;
-    uint32_t display_frame_id;
-    uint32_t current_frame_id;
-    uint8_t  frame_to_show_map_idx;
-    uint8_t  frame_type;
-    uint8_t  order_hint;
-    uint8_t  primary_ref_frame;
-    uint16_t frame_width_minus_1;
-    uint16_t frame_height_minus_1;
-    uint16_t render_width_minus_1;
-    uint16_t render_height_minus_1;
-    uint8_t  coded_denom;
-
-    uint8_t refresh_frame_flags;
-    uint8_t ref_order_hint[8];
-    int8_t  ref_frame_idx[7];
-    uint32_t delta_frame_id_minus1[7];
-
-    uint8_t interpolation_filter;
-    uint8_t tx_mode;
-
-    StdVideoAV1MESATileInfo                   tiling;
-    StdVideoAV1MESAQuantization               quantization;
-    StdVideoAV1MESASegmentation               segmentation;
-    StdVideoAV1MESADeltaQ                     delta_q;
-    StdVideoAV1MESALoopFilter                 loop_filter;
-    StdVideoAV1MESACDEF                       cdef;
-    StdVideoAV1MESALoopRestoration            lr;
-    StdVideoAV1MESAGlobalMotion               global_motion[8]; // One per ref frame
-    StdVideoAV1MESAFilmGrainParameters        film_grain;
-} StdVideoAV1MESAFrameHeader;
-
-typedef struct StdVideoAV1MESAScreenCoding {
-    uint8_t seq_force_screen_content_tools;
-} StdVideoAV1MESAScreenCoding;
-
-typedef struct StdVideoAV1MESATimingInfoFlags {
-    uint8_t equal_picture_interval;
-} StdVideoAV1MESATimingInfoFlags;
-
-typedef struct StdVideoAV1MESATimingInfo {
-    StdVideoAV1MESATimingInfoFlags flags;
-    uint32_t num_units_in_display_tick;
-    uint32_t time_scale;
-    uint32_t num_ticks_per_picture_minus_1;
-} StdVideoAV1MESATimingInfo;
-
-typedef struct StdVideoAV1MESAColorConfigFlags {
-    uint8_t mono_chrome;
-    uint8_t color_range;
-    uint8_t separate_uv_delta_q;
-} StdVideoAV1MESAColorConfigFlags;
-
-typedef struct StdVideoAV1MESAColorConfig {
-    StdVideoAV1MESAColorConfigFlags flags;
-    uint8_t bit_depth;
-    uint8_t subsampling_x;
-    uint8_t subsampling_y;
-} StdVideoAV1MESAColorConfig;
-
-typedef struct StdVideoAV1MESASequenceHeaderFlags {
-    uint8_t still_picture;
-    uint8_t reduced_still_picture_header;
-    uint8_t use_128x128_superblock;
-    uint8_t enable_filter_intra;
-    uint8_t enable_intra_edge_filter;
-    uint8_t enable_interintra_compound;
-    uint8_t enable_masked_compound;
-    uint8_t enable_warped_motion;
-    uint8_t enable_dual_filter;
-    uint8_t enable_order_hint;
-    uint8_t enable_jnt_comp;
-    uint8_t enable_ref_frame_mvs;
-    uint8_t frame_id_numbers_present_flag;
-    uint8_t enable_superres;
-    uint8_t enable_cdef;
-    uint8_t enable_restoration;
-    uint8_t film_grain_params_present;
-    uint8_t timing_info_present_flag;
-    uint8_t initial_display_delay_present_flag;
-} StdVideoAV1MESASequenceHeaderFlags;
-
-typedef struct StdVideoAV1MESASequenceHeader {
-    StdVideoAV1MESASequenceHeaderFlags flags;
-
-    StdVideoAV1MESAProfile seq_profile;
-    uint8_t  frame_width_bits_minus_1;
-    uint8_t  frame_height_bits_minus_1;
-    uint16_t max_frame_width_minus_1;
-    uint16_t max_frame_height_minus_1;
-    uint8_t  delta_frame_id_length_minus_2;
-    uint8_t  additional_frame_id_length_minus_1;
-    uint8_t  order_hint_bits_minus_1;
-    uint8_t  seq_choose_integer_mv;
-    uint8_t  seq_force_integer_mv;
-
-    StdVideoAV1MESATimingInfo       timing_info;
-    StdVideoAV1MESAColorConfig      color_config;
-} StdVideoAV1MESASequenceHeader;
-
-typedef struct StdVideoAV1MESATile {
-    uint16_t tg_start;
-    uint16_t tg_end;
-    uint16_t row;
-    uint16_t column;
-    uint32_t size;
-    uint32_t offset;
-} StdVideoAV1MESATile;
-
-typedef struct StdVideoAV1MESATileList {
-    StdVideoAV1MESATile *tile_list;
-    uint32_t nb_tiles;
-} StdVideoAV1MESATileList;
-
-typedef struct VkVideoDecodeAV1PictureInfoMESA {
-    VkStructureType sType;
-    const void *pNext;
-    StdVideoAV1MESAFrameHeader *frame_header;
-    StdVideoAV1MESATileList *tile_list;
-    uint8_t skip_mode_frame_idx[2];
-} VkVideoDecodeAV1PictureInfoMESA;
-
-typedef struct VkVideoDecodeAV1DpbSlotInfoMESA {
-    VkStructureType sType;
-    const void *pNext;
-    uint8_t frameIdx;
-    uint8_t ref_order_hint[7];
-    uint8_t disable_frame_end_update_cdf;
-} VkVideoDecodeAV1DpbSlotInfoMESA;
-
-typedef struct VkVideoDecodeAV1SessionParametersAddInfoMESA {
-    VkStructureType sType;
-    const void *pNext;
-    StdVideoAV1MESASequenceHeader *sequence_header;
-} VkVideoDecodeAV1SessionParametersAddInfoMESA;
-
-typedef struct VkVideoDecodeAV1SessionParametersCreateInfoMESA {
-    VkStructureType sType;
-    const void *pNext;
-    const VkVideoDecodeAV1SessionParametersAddInfoMESA *pParametersAddInfo;
-} VkVideoDecodeAV1SessionParametersCreateInfoMESA;
-
-typedef struct VkVideoDecodeAV1ProfileInfoMESA {
-    VkStructureType sType;
-    const void *pNext;
-    StdVideoAV1MESAProfile stdProfileIdc;
-} VkVideoDecodeAV1ProfileInfoMESA;
-
-typedef enum VkVideoDecodeAV1CapabilityFlagBitsMESA {
-    VK_VIDEO_DECODE_AV1_CAPABILITY_EXTERNAL_FILM_GRAIN_MESA = 0x00000001,
-    VK_VIDEO_DECODE_AV1_CAPABILITY_FLAG_BITS_MAX_ENUM_MESA = 0x7FFFFFFF
-} VkVideoDecodeAV1CapabilityFlagBitsMESA;
-typedef VkFlags VkVideoDecodeAV1CapabilityFlagsMESA;
-
-typedef struct VkVideoDecodeAV1CapabilitiesMESA {
-    VkStructureType sType;
-    const void *pNext;
-    VkVideoDecodeAV1CapabilityFlagsMESA flags;
-    StdVideoAV1MESALevel maxLevelIdc;
-} VkVideoDecodeAV1CapabilitiesMESA;
-
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PICTURE_INFO_MESA (VkStructureType)1000509000
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_CREATE_INFO_MESA (VkStructureType)1000509001
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_SESSION_PARAMETERS_ADD_INFO_MESA (VkStructureType)1000509002
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_DPB_SLOT_INFO_MESA (VkStructureType)1000509003
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_CAPABILITIES_MESA (VkStructureType)1000509004
-#define VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PROFILE_INFO_MESA (VkStructureType)1000509005
 
 #ifdef __cplusplus
 }

@@ -751,7 +751,7 @@ VkResult VulkanVideoProcessor::CreateParser(const char* filename,
     } else if (vkCodecType == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) {
         pStdExtensionVersion = &h265StdExtensionVersion;
 #ifdef ENABLE_AV1_DECODER
-    } else if (vkCodecType == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_MESA) {
+    } else if (vkCodecType == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
         pStdExtensionVersion = &av1StdExtensionVersion;
 #endif
     } else {

@@ -51,7 +51,7 @@ public:
     virtual const StdVideoH265VideoParameterSet*    GetStdH265Vps() const { return nullptr; }
     virtual const StdVideoH265SequenceParameterSet* GetStdH265Sps() const { return nullptr; }
     virtual const StdVideoH265PictureParameterSet*  GetStdH265Pps() const { return nullptr; }
-    virtual const StdVideoAV1MESASequenceHeader*    GetStdAV1Sps() const { return nullptr; }
+    virtual const StdVideoAV1SequenceHeader*        GetStdAV1Sps() const { return nullptr; }
 
     virtual const char* GetRefClassId() const = 0;
 

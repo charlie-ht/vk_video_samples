@@ -71,9 +71,6 @@ public:
     static int32_t PopulateH265UpdateFields(const StdVideoPictureParametersSet* pStdPictureParametersSet,
                                             VkVideoDecodeH265SessionParametersAddInfoKHR& h265SessionParametersAddInfo);
 
-    static int32_t PopulateAV1UpdateFields(const StdVideoPictureParametersSet* pStdPictureParametersSet,
-                                           VkVideoDecodeAV1SessionParametersAddInfoMESA& av1SessionParametersAddInfo);
-
     VkResult CreateParametersObject(const VulkanDeviceContext* vkDevCtx,
                                     VkSharedBaseObj<VulkanVideoSession>& videoSession,
                                     const StdVideoPictureParametersSet* pStdVideoPictureParametersSet,
