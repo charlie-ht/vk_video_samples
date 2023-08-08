@@ -2295,8 +2295,11 @@ void VulkanAV1Decoder::CalcTileOffsets(const uint8_t *base, const uint8_t *end, 
         {
             size = end - ptr;
         }
-        m_pSliceOffsets[2 * tile_id] = offset + (ptr - base);
-        m_pSliceOffsets[2 * tile_id + 1] = size;
+
+        assert((ptr - base) < INT_MAX);
+        assert(size < INT_MAX);
+        m_pSliceOffsets[2 * tile_id] = offset + (int)(ptr - base);
+        m_pSliceOffsets[2 * tile_id + 1] = (int)size;
         ptr += size;
     }
 }
@@ -2386,7 +2389,8 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
             uint32_t tileGroupSizeBytes = hdr.payload_size - consumedBytes;
             uint8_t* pTileGroupPayloadDataStart = (uint8_t*)pdatain + hdr.header_size + consumedBytes;
             uint8_t* pTileGroupPayloadDataEnd = pTileGroupPayloadDataStart + tileGroupSizeBytes;
-            uint32_t tileGroupStartOffestInOBU = m_nalu.start_offset + consumedBytes;
+            assert((m_nalu.start_offset + consumedBytes) < UINT_MAX);
+            uint32_t tileGroupStartOffestInOBU = (uint32_t)(m_nalu.start_offset) + consumedBytes;
             bool bStatus = true;
             CalcTileOffsets(pTileGroupPayloadDataStart, pTileGroupPayloadDataEnd, tileGroupStartOffestInOBU, tile_start, tile_end);
             bStatus = end_of_picture(pTileGroupPayloadDataStart, tileGroupSizeBytes, tileGroupStartOffestInOBU);

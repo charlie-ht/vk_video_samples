@@ -637,7 +637,7 @@ protected:
             case 2: return read_u16_le(src);
             case 3: return read_u24_le(src);
             case 4: return read_u32_le(src);
-            default: assert(0 && "Invalid size"); return -1;
+            default: assert(0 && "Invalid size"); return (size_t)(-1);
         }
     }
 
