@@ -10729,7 +10729,6 @@ typedef struct VkVideoDecodeAV1PictureInfoKHR {
 typedef struct VkVideoDecodeAV1DpbSlotInfoKHR {
     VkStructureType                          sType;
     const void*                              pNext;
-    uint32_t                                 frameIdx;
     const StdVideoDecodeAV1ReferenceInfo*    pStdReferenceInfo;
 } VkVideoDecodeAV1DpbSlotInfoKHR;
 
