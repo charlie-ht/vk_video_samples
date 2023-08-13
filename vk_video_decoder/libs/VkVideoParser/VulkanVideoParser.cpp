@@ -24,6 +24,7 @@
 #include <atomic>
 #include <iostream>
 #include <queue> // std::queue
+#include <memory>
 
 #include "VulkanVideoParserIf.h"
 #include "NvVideoParser/nvVulkanVideoParser.h"
@@ -168,6 +169,9 @@ struct nvVideoAV1PicParameters {
     StdVideoDecodeAV1PictureInfo stdPictureInfo;
     VkVideoDecodeAV1PictureInfoKHR pictureInfo;
     StdVideoAV1FrameHeader frameHeader;
+    StdVideoAV1Segmentation segmentation;
+    StdVideoAV1CDEF cdef;
+    StdVideoAV1FilmGrain filmGrain;
 
     VkVideoDecodeAV1SessionParametersCreateInfoKHR pictureParameters;
     nvVideoDecodeAV1DpbSlotInfo dpbRefList[nvVideoDecodeAV1DpbSlotInfo::TOTAL_REFS_PER_FRAME + 1];
@@ -1692,14 +1696,14 @@ bool VulkanVideoParser::UpdatePictureParameters(
 
     if (m_decoderHandler == NULL) {
         assert(!"m_pDecoderHandler is NULL");
-        return NULL;
+        return false;
     }
 
     if (pictureParametersObject) {
         return m_decoderHandler->UpdatePictureParameters(pictureParametersObject, client);
     }
 
-    return NULL;
+    return false;
 }
 
 bool VulkanVideoParser::DecodePicture(
@@ -1711,8 +1715,10 @@ bool VulkanVideoParser::DecodePicture(
     // union {
     nvVideoH264PicParameters h264;
     nvVideoH265PicParameters hevc;
-    nvVideoAV1PicParameters av1;
     // };
+
+
+    std::unique_ptr<nvVideoAV1PicParameters> av1{};
 
     if (m_decoderHandler == NULL) {
         assert(!"m_pDecoderHandler is NULL");
@@ -2002,10 +2008,11 @@ bool VulkanVideoParser::DecodePicture(
     else if (m_codecType == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
         const VkParserAv1PictureData* const pin = &pd->CodecSpecific.av1;
 
-        av1 = nvVideoAV1PicParameters();
+        av1.reset(new nvVideoAV1PicParameters());
+        memset(av1.get(), 0, sizeof(nvVideoAV1PicParameters));
         pCurrFrameDecParams->isAV1 = true;
-        VkVideoDecodeAV1PictureInfoKHR* pPictureInfo = &av1.pictureInfo;
-	    av1.pictureInfo.pStdPictureInfo = &av1.stdPictureInfo;
+        VkVideoDecodeAV1PictureInfoKHR* pPictureInfo = &av1->pictureInfo;
+	    av1->pictureInfo.pStdPictureInfo = &av1->stdPictureInfo;
 
         pCurrFrameDecParams->pStdPps = nullptr;
         pCurrFrameDecParams->pStdSps = nullptr;
@@ -2022,7 +2029,7 @@ bool VulkanVideoParser::DecodePicture(
         pDecodePictureInfo->viewId = 0; // @review: Doesn't seem to be used in Vulkan?
 
         pPictureInfo->sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PICTURE_INFO_KHR;
-        pCurrFrameDecParams->decodeFrameInfo.pNext = &av1.pictureInfo;
+        pCurrFrameDecParams->decodeFrameInfo.pNext = &av1->pictureInfo;
 
         if (false)
         {
@@ -2043,7 +2050,7 @@ bool VulkanVideoParser::DecodePicture(
             std::cout << std::endl;
         }
 
-        nvVideoDecodeAV1DpbSlotInfo* dpbSlotsAv1 = av1.dpbRefList;
+        nvVideoDecodeAV1DpbSlotInfo* dpbSlotsAv1 = av1->dpbRefList;
         int numRefs = 0;
         for (int i = 0; i < nvVideoDecodeAV1DpbSlotInfo::TOTAL_REFS_PER_FRAME; i++)
         {
@@ -2089,7 +2096,7 @@ bool VulkanVideoParser::DecodePicture(
         pCurrFrameDecParams->pGopReferenceImagesIndexes[nvVideoDecodeAV1DpbSlotInfo::TOTAL_REFS_PER_FRAME] = -1;
 
         // Setup the AV1 frame header
-        StdVideoAV1FrameHeader& hdr = av1.frameHeader;
+        StdVideoAV1FrameHeader& hdr = av1->frameHeader;
 
         StdVideoAV1FrameHeaderFlags* flags = &hdr.flags;
         flags->disable_frame_end_update_cdf = pin->disable_frame_end_update_cdf;
@@ -2141,32 +2148,32 @@ bool VulkanVideoParser::DecodePicture(
 
         // Tiling
         for (int i = 0; i < 64; i++) {
-            av1.width_in_sbs_minus_1[i] = pin->tile_width_in_sbs_minus_1[i];
-            av1.height_in_sbs_minus_1[i] = pin->tile_height_in_sbs_minus_1[i];
-            av1.MiColStarts[i] = pin->tile_col_start_sb[i];
-            av1.MiRowStarts[i] = pin->tile_row_start_sb[i];
+            av1->width_in_sbs_minus_1[i] = pin->tile_width_in_sbs_minus_1[i];
+            av1->height_in_sbs_minus_1[i] = pin->tile_height_in_sbs_minus_1[i];
+            av1->MiColStarts[i] = pin->tile_col_start_sb[i];
+            av1->MiRowStarts[i] = pin->tile_row_start_sb[i];
         }
         hdr.tile_info.flags.uniform_tile_spacing_flag = pin->uniform_tile_spacing_flag;
         hdr.tile_info.tileCols = pin->num_tile_cols;
         hdr.tile_info.tileRows = pin->num_tile_rows;
-        hdr.tile_info.MiColStarts = av1.MiColStarts;
-        hdr.tile_info.MiRowStarts = av1.MiRowStarts;
-        hdr.tile_info.width_in_sbs_minus_1 = av1.width_in_sbs_minus_1;
-        hdr.tile_info.height_in_sbs_minus_1 = av1.height_in_sbs_minus_1;
-        pPictureInfo->pTileOffsets = av1.tileOffsets;
-        pPictureInfo->pTileSizes = av1.tileSizes;
+        hdr.tile_info.MiColStarts = av1->MiColStarts;
+        hdr.tile_info.MiRowStarts = av1->MiRowStarts;
+        hdr.tile_info.width_in_sbs_minus_1 = av1->width_in_sbs_minus_1;
+        hdr.tile_info.height_in_sbs_minus_1 = av1->height_in_sbs_minus_1;
+        pPictureInfo->pTileOffsets = av1->tileOffsets;
+        pPictureInfo->pTileSizes = av1->tileSizes;
         hdr.tile_info.context_update_tile_id = pin->context_update_tile_id;
         hdr.tile_info.tile_size_bytes_minus_1 = pin->tile_size_bytes_minus_1;
         uint32_t numTiles = pin->num_tile_cols * pin->num_tile_rows;
         pPictureInfo->tileCount = numTiles;
         for (uint32_t i = 0; i < numTiles; i++)
         {
-            av1.tileOffsets[i] = pin->slice_offsets_and_size[2 * i];
-            av1.tileSizes[i] = pin->slice_offsets_and_size[2 * i + 1];
+            av1->tileOffsets[i] = pin->slice_offsets_and_size[2 * i];
+            av1->tileSizes[i] = pin->slice_offsets_and_size[2 * i + 1];
         }
         // Hardcoded for now since sub-picture decoding is not available.
-        av1.stdPictureInfo.tg_start = 0;
-        av1.stdPictureInfo.tg_end = numTiles - 1;
+        av1->stdPictureInfo.tg_start = 0;
+        av1->stdPictureInfo.tg_end = numTiles - 1;
 
         hdr.quantization.flags.using_qmatrix = pin->using_qmatrix;
         hdr.quantization.flags.diff_uv_delta = 0; // ??
@@ -2184,7 +2191,7 @@ bool VulkanVideoParser::DecodePicture(
         hdr.flags.segmentation_temporal_update = pin->segmentation_temporal_update;
         hdr.flags.segmentation_update_data = pin->segmentation_update_data;
 
-        StdVideoAV1Segmentation segmentation = {};
+        StdVideoAV1Segmentation& segmentation = av1->segmentation;
         hdr.pSegmentation = &segmentation;
         for (int i = 0; i < 8; i++) {
             segmentation.FeatureEnabled[i] = 0;
@@ -2207,7 +2214,7 @@ bool VulkanVideoParser::DecodePicture(
             hdr.loop_filter.loop_filter_ref_deltas[i] = pin->loop_filter_ref_deltas[i];
         }
 
-        StdVideoAV1CDEF cdef = {};
+        StdVideoAV1CDEF& cdef = av1->cdef;
         cdef.cdef_damping_minus_3 = pin->cdef_damping_minus_3;
         cdef.cdef_bits = pin->cdef_bits;
         for (int i = 0; i < 8; i++) {
@@ -2237,7 +2244,7 @@ bool VulkanVideoParser::DecodePicture(
             hdr.global_motion.gm_params[i+1][5] = parser_gm.wmmat[5];
         }
 
-        StdVideoAV1FilmGrain fg = {};
+        StdVideoAV1FilmGrain& fg = av1->filmGrain;
         hdr.flags.apply_grain = pin->fgs.apply_grain;
         hdr.pFilmGrain = &fg;
         if (pin->fgs.apply_grain)
@@ -2245,7 +2252,6 @@ bool VulkanVideoParser::DecodePicture(
             fg.flags.chroma_scaling_from_luma = pin->fgs.chroma_scaling_from_luma;
             fg.flags.overlap_flag = pin->fgs.overlap_flag;
             fg.flags.clip_to_restricted_range = pin->fgs.clip_to_restricted_range;
-
             fg.grain_scaling_minus_8 = pin->fgs.scaling_shift_minus8;
             fg.ar_coeff_lag = pin->fgs.ar_coeff_lag;
             fg.ar_coeff_shift_minus_6 = pin->fgs.ar_coeff_shift_minus6;
@@ -2281,7 +2287,7 @@ bool VulkanVideoParser::DecodePicture(
             fg.cr_luma_mult = pin->fgs.cr_luma_mult;
             fg.cr_offset = pin->fgs.cr_offset;
         }
-        av1.stdPictureInfo.pFrameHeader = &av1.frameHeader;
+        av1->stdPictureInfo.pFrameHeader = &av1->frameHeader;
 
         // TODO: skip_mode_frame_idx
 #endif
