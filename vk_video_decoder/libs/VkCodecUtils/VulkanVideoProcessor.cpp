@@ -511,26 +511,6 @@ size_t VulkanVideoProcessor::ConvertFrameToNv12(DecodedFrame* pFrame,
             }
             pSrc16 += layouts[1].rowPitch / 2;
         }
-
-
-        if (false)
-        {
-            // Sometimes the driver reports .size = 0 (but a correct rowPictch), so this simplisitic approach doesn't work always..
-            VkDeviceSize numWords = layouts[1].size / (2 * sizeof(uint16_t));
-
-            for (size_t i = 0; i < numWords; i++) {
-                *pCbDst16++ = *pSrc16;
-                pSrc16 += 2;
-            }
-
-            pSrc16 = (uint16_t *)pSrc;
-            pSrc16++;
-            for (size_t i = 0; i < numWords; i++) {
-                *pCrDst16++ = *pSrc16;
-                pSrc16 += 2;
-            }
-        }
-        //memcpy(pDst, pSrc, layouts[1].size);
     } else {
         assert(mpInfo->planesLayout.bpp == YCBCRA_8BPP);
         assert(format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM);
