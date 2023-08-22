@@ -342,6 +342,9 @@ typedef struct _AV1ObuHeader
 struct av1_seq_param_s : public StdVideoPictureParametersSet, public StdVideoAV1SequenceHeader
 {
     static const char* m_refClassId;
+    // TODO: This struct can be trimmed and normalized quite a bit
+    // more. The use of custom types for AV1 (profile, level, etc,
+    // etc) should not longer be necessary.
     AV1_PROFILE     profile;                        // should use StdVideoAV1SequenceHeader.seq_profile // features that can be used like bit-depth, monochrome and chroma subsampling
     uint8_t         frame_id_length{};  // length minus _2 ...
     uint8_t         delta_frame_id_length{};

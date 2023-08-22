@@ -2135,9 +2135,12 @@ bool VulkanVideoParser::DecodePicture(
         hdr.render_height_minus_1 = pin->height - 1;
         hdr.coded_denom = pin->coded_denom;
         hdr.refresh_frame_flags = pin->refresh_frame_flags;
+        for (int i = 0; i < STD_VIDEO_AV1_REFS_PER_FRAME; i++) {
+            hdr.ref_frame_idx[i] = pin->ref_frame[i];
+            printf(";;; app: ref_frame_idx[%d] = %d\n", i, hdr.ref_frame_idx[i]);
+        }
 
         for (int i = 0; i < 7; i++) {
-            hdr.ref_frame_idx[i] = pin->ref_frame[i];
             hdr.delta_frame_id_minus_1[i] = 0; // ??
         }
         for (unsigned j = 0; j < 7; j++) {
