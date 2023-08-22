@@ -29,6 +29,8 @@
 
 #define DEBUG_PARSER 0
 
+#include <climits>
+
 #include "VulkanAV1Decoder.h"
 
 // constructor
@@ -2314,7 +2316,6 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
     bool last_tile_group;
     int tile_start = 0;
     int tile_end = -1;
-    unsigned int parsedBytes = 0;
 
     while (datasize > 0) {
         memset(&hdr, 0, sizeof(hdr));
@@ -2349,7 +2350,6 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
                 m_nalu.start_offset += hdr.payload_size;
                 pdatain  += (hdr.payload_size + hdr.header_size);
                 datasize -= (hdr.payload_size + hdr.header_size);
-                parsedBytes   += (hdr.payload_size + hdr.header_size);
                 continue;
             }
         }
@@ -2462,7 +2462,6 @@ bool VulkanAV1Decoder::ParseOneFrame(const uint8_t* pdatain, int32_t datasize, c
         m_nalu.start_offset += hdr.payload_size;
         pdatain += (hdr.payload_size + hdr.header_size);
         datasize -= (hdr.payload_size + hdr.header_size);
-        parsedBytes += (hdr.payload_size + hdr.header_size);
 
         assert(datasize >= 0);
     }

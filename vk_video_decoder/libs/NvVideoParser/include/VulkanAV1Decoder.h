@@ -14,8 +14,8 @@
 * limitations under the License.
 */
 
-#ifndef _VULKANAV1DECODER_H_
-#define _VULKANAV1_DECOER_H_
+#ifndef _VULKANAV1_DECODER_H_
+#define _VULKANAV1_DECODER_H_
 
 #include "vkvideo_parser/StdVideoPictureParametersSet.h"
 #include "VulkanVideoDecoder.h"
