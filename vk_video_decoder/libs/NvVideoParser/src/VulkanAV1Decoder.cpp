@@ -619,13 +619,15 @@ int VulkanAV1Decoder::ChooseOperatingPoint()
 
 bool VulkanAV1Decoder::ParseObuSequenceHeader()
 {
-    m_sps.Reset(nullptr); // @nocheckin: Handle multiple sequence headers correctly
-    VkResult result = av1_seq_param_s::Create(0, m_sps);
-    assert((result == VK_SUCCESS) && m_sps);
+    // Always create a new SPS, for AV1 updates are not a thing, instead one must create a new session.
+    VkSharedBaseObj<av1_seq_param_s> new_sps;
+    VkResult result = av1_seq_param_s::Create(0, new_sps);
+    assert((result == VK_SUCCESS) && new_sps);
+
     if (result != VK_SUCCESS)
         return false;
 
-    auto sps = m_sps;
+    VkSharedBaseObj<av1_seq_param_s> sps = new_sps;
     sps->profile = (AV1_PROFILE)u(3);
     if (sps->profile > AV1_PROFILE_2) {
         // Unsupported profile
@@ -875,11 +877,12 @@ bool VulkanAV1Decoder::ParseObuSequenceHeader()
 
     if (m_bSPSReceived) {
         // @review: this is not correct
-        if (!memcmp(sps, &m_sps, sizeof(av1_seq_param_s)))
-            m_bSPSChanged = true;
+        //if (!memcmp(sps, &m_sps, sizeof(av1_seq_param_s)))
+	m_bSPSChanged = true;
     }
 
     m_bSPSReceived = true;
+    m_sps = new_sps;
 
     VkSharedBaseObj<StdVideoPictureParametersSet> picParamObj(m_sps);
     m_PicData.pStdSps = picParamObj.Get();
