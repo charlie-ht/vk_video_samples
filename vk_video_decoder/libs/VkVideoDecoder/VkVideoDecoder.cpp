@@ -729,6 +729,8 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
                                       frameSynchronizationInfo.startQueryId, frameSynchronizationInfo.numQueries);
     }
 
+
+    decodeBeginInfo.referenceSlotCount = 0;
     printf(";;; %d begin decode | %d{ ", decodeBeginInfo.pReferenceSlots[8].slotIndex, decodeBeginInfo.referenceSlotCount);
     for (uint32_t i = 0; i < decodeBeginInfo.referenceSlotCount; i++) {
 	printf("%d:%d, ", i, decodeBeginInfo.pReferenceSlots[i].slotIndex);
