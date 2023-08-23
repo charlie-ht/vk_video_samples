@@ -1042,8 +1042,10 @@ int32_t VulkanVideoParser::BeginSequence(const VkParserSequenceInfo* pnvsi)
 {
     bool sequenceUpdate = ((m_nvsi.nMaxWidth != 0) && (m_nvsi.nMaxHeight != 0)) ? true : false;
 
-    const uint32_t maxDpbSlots =  (pnvsi->eCodec == VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) ?
+    uint32_t maxDpbSlots =  (pnvsi->eCodec == VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) ?
                                   MAX_DPB_REF_AND_SETUP_SLOTS : MAX_DPB_REF_SLOTS;
+    if (pnvsi->eCodec == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR)
+        maxDpbSlots = pnvsi->nMinNumDecodeSurfaces;
     uint32_t configDpbSlots = (pnvsi->nMinNumDpbSlots > 0) ? pnvsi->nMinNumDpbSlots : maxDpbSlots;
     configDpbSlots = std::min<uint32_t>(configDpbSlots, maxDpbSlots);
 
@@ -2035,7 +2037,7 @@ bool VulkanVideoParser::DecodePicture(
         {
             std::cout << "PicIdx = " << PicIdx << std::endl;
             std::cout << "primary_ref_frame = " << (int32_t)pin->primary_ref_frame << std::endl;
-            std::cout << "ref_frame[7]=" << std::endl;
+            std::cout << "ref_frame_idx[7]=" << std::endl;
             for (int i = 0; i < 7; i++) {
             std::cout << i << " ";
             }
@@ -2045,7 +2047,7 @@ bool VulkanVideoParser::DecodePicture(
             }
             std::cout << "\nref_frame_map:" << std::endl;
             for (int i = 0; i < 8; i++) {
-            std::cout << i << ": " << pin->ref_frame_map[i] << std::endl;
+            std::cout << i << ": " << (int32_t)GetPicIdx(pin->ref_frame_map[i]) << std::endl;
             }
             std::cout << std::endl;
         }

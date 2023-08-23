@@ -201,6 +201,10 @@ int32_t VkVideoDecoder::StartVideoSequence(VkParserDetectedVideoFormat* pVideoFo
     uint32_t alignHeight = videoCapabilities.pictureAccessGranularity.height - 1;
     imageExtent.height = ((imageExtent.height + alignHeight) & ~alignHeight);
 
+    int maxActiveReferencePictures = std::min<uint32_t>(maxDpbSlotCount, VkParserPerFrameDecodeParameters::MAX_DPB_REF_SLOTS);
+    if (videoCodec == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR)
+        maxActiveReferencePictures = STD_VIDEO_AV1_REFS_PER_FRAME;
+
     if (!m_videoSession ||
             !m_videoSession->IsCompatible( m_vkDevCtx,
                                            m_vkDevCtx->GetVideoDecodeQueueFamilyIdx(),
@@ -209,7 +213,7 @@ int32_t VkVideoDecoder::StartVideoSequence(VkParserDetectedVideoFormat* pVideoFo
                                            imageExtent,
                                            dpbImageFormat,
                                            maxDpbSlotCount,
-                                           std::max<uint32_t>(maxDpbSlotCount, VkParserPerFrameDecodeParameters::MAX_DPB_REF_SLOTS)) ) {
+                                           maxActiveReferencePictures) ) {
 
         result = VulkanVideoSession::Create( m_vkDevCtx,
                                              m_vkDevCtx->GetVideoDecodeQueueFamilyIdx(),
@@ -218,7 +222,7 @@ int32_t VkVideoDecoder::StartVideoSequence(VkParserDetectedVideoFormat* pVideoFo
                                              imageExtent,
                                              dpbImageFormat,
                                              maxDpbSlotCount,
-                                             std::min<uint32_t>(maxDpbSlotCount, VkParserPerFrameDecodeParameters::MAX_DPB_REF_SLOTS),
+                                             maxActiveReferencePictures,
                                              m_videoSession);
 
         // after creating a new video session, we need codec reset.
