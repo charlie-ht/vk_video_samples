@@ -497,18 +497,24 @@ typedef struct VkParserAv1PictureData {
     // film grain params
     VkParserAv1FilmGrain fgs;
 
-    // order: Last frame,Last2 frame,Last3 frame,Golden frame,BWDREF frame,ALTREF2
-    // frame,ALTREF frame
     uint8_t primary_ref_frame;
-    uint8_t ref_frame[STD_VIDEO_AV1_REFS_PER_FRAME];
-    VkPicIf* ref_frame_map[STD_VIDEO_AV1_NUM_REF_FRAMES];
-    uint8_t ref_order_hint[STD_VIDEO_AV1_NUM_REF_FRAMES];
+    // Frame buffer index for the LAST1, LAST2, LAST3, GLD, BWD, ALT2, ALT
+    // reference frames used by the current frame.
+    uint8_t ref_frame_idx[STD_VIDEO_AV1_REFS_PER_FRAME];
 
+    // Global frame buffer state (not per-reference)
+
+    // Bitmask specifying which frame buffers to update with the
+    // freshly decoded frame.
     uint8_t refresh_frame_flags;
+    uint8_t ref_order_hint[STD_VIDEO_AV1_NUM_REF_FRAMES];
+    // Map from one the of 8 reference frame indices (0..7) to a frame buffer.
+    // Not part of the AV1 spec.
+    VkPicIf* ref_frame_map[STD_VIDEO_AV1_NUM_REF_FRAMES];
 
     VkParserAv1GlobalMotionParameters ref_global_motion[STD_VIDEO_AV1_REFS_PER_FRAME];
     
-    int slice_offsets_and_size[512]; // Max AV1 tiles (256) * 2
+    int slice_offsets_and_size[512]; // Max AV1 tiles 256 (max tiles) * 2 (offset + size)
 } VkParserAv1PictureData;
 
 typedef struct VkParserPictureData {
