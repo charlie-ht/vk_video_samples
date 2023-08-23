@@ -729,6 +729,11 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
                                       frameSynchronizationInfo.startQueryId, frameSynchronizationInfo.numQueries);
     }
 
+    printf(";;; %d begin decode | %d{ ", decodeBeginInfo.pReferenceSlots[8].slotIndex, decodeBeginInfo.referenceSlotCount);
+    for (uint32_t i = 0; i < decodeBeginInfo.referenceSlotCount; i++) {
+	printf("%d:%d, ", i, decodeBeginInfo.pReferenceSlots[i].slotIndex);
+    }
+    printf("\b\b }\n");
     m_vkDevCtx->CmdBeginVideoCodingKHR(frameDataSlot.commandBuffer, &decodeBeginInfo);
 
     if (m_resetDecoder != false) {
@@ -759,6 +764,12 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
         m_vkDevCtx->CmdBeginQuery(frameDataSlot.commandBuffer, frameSynchronizationInfo.queryPool,
                                   frameSynchronizationInfo.startQueryId, VkQueryControlFlags());
     }
+
+    printf(";;; %d decode video | %d{ ", decodeBeginInfo.pReferenceSlots[8].slotIndex, pCurrFrameDecParams->decodeFrameInfo.referenceSlotCount);
+    for (uint32_t i = 0; i < pCurrFrameDecParams->decodeFrameInfo.referenceSlotCount; i++) {
+	printf("%d:%d, ", i, pCurrFrameDecParams->decodeFrameInfo.pReferenceSlots[i].slotIndex);
+    }
+    printf("\b\b }\n");
 
     m_vkDevCtx->CmdDecodeVideoKHR(frameDataSlot.commandBuffer, &pCurrFrameDecParams->decodeFrameInfo);
 

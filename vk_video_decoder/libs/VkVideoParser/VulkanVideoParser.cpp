@@ -54,6 +54,8 @@ static const uint32_t MAX_DPB_REF_AND_SETUP_SLOTS = MAX_DPB_REF_SLOTS + 1; // pl
 
 #define COPYFIELD(pout, pin, name) pout->name = pin->name
 
+static constexpr int DEBUG_PARSER = 1;
+
 namespace NvVulkanDecoder
 {
 
@@ -2032,24 +2034,13 @@ bool VulkanVideoParser::DecodePicture(
 
         pPictureInfo->sType = VK_STRUCTURE_TYPE_VIDEO_DECODE_AV1_PICTURE_INFO_KHR;
         pCurrFrameDecParams->decodeFrameInfo.pNext = &av1->pictureInfo;
-
-        if (false)
+        // Populate the AV1 reference frame indices and cfbi
+        if (DEBUG_PARSER)
         {
-            std::cout << "PicIdx = " << PicIdx << std::endl;
-            std::cout << "primary_ref_frame = " << (int32_t)pin->primary_ref_frame << std::endl;
-            std::cout << "ref_frame_idx[7]=" << std::endl;
-            for (int i = 0; i < 7; i++) {
-            std::cout << i << " ";
-            }
-            std::cout << std::endl;
-            for (int i = 0; i < 7; i++) {
-            std::cout << (int32_t)pin->ref_frame_idx[i] << " ";
-            }
-            std::cout << "\nref_frame_map:" << std::endl;
-            for (int i = 0; i < 8; i++) {
-            std::cout << i << ": " << (int32_t)GetPicIdx(pin->ref_frame_map[i]) << std::endl;
-            }
-            std::cout << std::endl;
+            printf(";;; %d | primary_ref_frame %d\n", PicIdx, pin->primary_ref_frame);
+            printf(";;; %d | ref_frame_map {", PicIdx);
+            for (int i = 0; i < 8; i++) printf("%d:%d, ", i, GetPicIdx(pin->ref_frame_map[i]));
+            printf("\b\b }\n");
         }
 
         nvVideoDecodeAV1DpbSlotInfo* dpbSlotsAv1 = av1->dpbRefList;
@@ -2137,10 +2128,14 @@ bool VulkanVideoParser::DecodePicture(
         hdr.render_height_minus_1 = pin->height - 1;
         hdr.coded_denom = pin->coded_denom;
         hdr.refresh_frame_flags = pin->refresh_frame_flags;
+
+
+        printf(";;; %d | refresh_frame_flags %x | ref_frame_idx { ",  PicIdx, hdr.refresh_frame_flags);
         for (int i = 0; i < STD_VIDEO_AV1_REFS_PER_FRAME; i++) {
             hdr.ref_frame_idx[i] = pin->ref_frame_idx[i];
-            printf(";;; app: ref_frame_idx[%d] = %d\n", i, hdr.ref_frame_idx[i]);
+            printf("%d:%d, ", i, hdr.ref_frame_idx[i]);
         }
+        printf("\b\b }\n");
 
         for (int i = 0; i < 7; i++) {
             hdr.delta_frame_id_minus_1[i] = 0; // ??
