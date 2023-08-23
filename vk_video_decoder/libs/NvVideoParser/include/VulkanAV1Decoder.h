@@ -567,11 +567,9 @@ protected:
     // global motion
     AV1WarpedMotionParams       global_motions[GM_GLOBAL_MODELS_PER_FRAME];
     
-    int32_t                     ref_frame_map[NUM_REF_FRAMES];
     int32_t                     ref_frame_id[NUM_REF_FRAMES];
     int32_t                     RefValid[NUM_REF_FRAMES];
     int32_t                     ref_frame_idx[REFS_PER_FRAME];
-    int32_t                     active_ref_idx[REFS_PER_FRAME];
 
     int32_t                     RefOrderHint[NUM_REF_FRAMES];
 

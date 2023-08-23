@@ -2041,7 +2041,7 @@ bool VulkanVideoParser::DecodePicture(
             }
             std::cout << std::endl;
             for (int i = 0; i < 7; i++) {
-            std::cout << (int32_t)pin->ref_frame[i] << " ";
+            std::cout << (int32_t)pin->ref_frame_idx[i] << " ";
             }
             std::cout << "\nref_frame_map:" << std::endl;
             for (int i = 0; i < 8; i++) {
@@ -2136,7 +2136,7 @@ bool VulkanVideoParser::DecodePicture(
         hdr.coded_denom = pin->coded_denom;
         hdr.refresh_frame_flags = pin->refresh_frame_flags;
         for (int i = 0; i < STD_VIDEO_AV1_REFS_PER_FRAME; i++) {
-            hdr.ref_frame_idx[i] = pin->ref_frame[i];
+            hdr.ref_frame_idx[i] = pin->ref_frame_idx[i];
             printf(";;; app: ref_frame_idx[%d] = %d\n", i, hdr.ref_frame_idx[i]);
         }
 

@@ -247,8 +247,8 @@ uint32_t VulkanAV1Decoder::DecodeGlobalMotionParams()
         prev_models[i] = default_warp_params;
 
     if(primary_ref_frame != PRIMARY_REF_NONE) {
-        if (m_pBuffers[active_ref_idx[primary_ref_frame]].buffer)
-            memcpy(prev_models, m_pBuffers[active_ref_idx[primary_ref_frame]].global_models, sizeof(AV1WarpedMotionParams)*GM_GLOBAL_MODELS_PER_FRAME);
+        if (m_pBuffers[ref_frame_idx[primary_ref_frame]].buffer)
+            memcpy(prev_models, m_pBuffers[ref_frame_idx[primary_ref_frame]].global_models, sizeof(AV1WarpedMotionParams)*GM_GLOBAL_MODELS_PER_FRAME);
     }
   
     for (int frame = 0; frame < GM_GLOBAL_MODELS_PER_FRAME; ++frame) {
