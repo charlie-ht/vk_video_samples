@@ -148,6 +148,8 @@ struct nvVideoDecodeAV1DpbSlotInfo
         // Number of reference frame types (including intra type)
         TOTAL_REFS_PER_FRAME = 8,
     };
+    // TODO: Should be using this!
+    //StdVideoDecodeAV1ReferenceInfo referenceInfo;
     VkVideoDecodeAV1DpbSlotInfoKHR dpbSlotInfo{};
     const VkVideoDecodeAV1DpbSlotInfoKHR* Init(int8_t slotIndex)
     {
