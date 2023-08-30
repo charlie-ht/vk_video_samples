@@ -679,7 +679,7 @@ protected:
     uint16_t                Read_primitive_refsubexpfin(uint16_t n, uint16_t k, uint16_t ref);
     uint16_t                Read_primitive_subexpfin(uint16_t n, uint16_t k);
     uint16_t                Read_primitive_quniform(uint16_t n);
-    void                    UpdateFramePointers();
+    void                    UpdateFramePointers(VkPicIf* currentPicture);
     bool                    IsFrameIntra() { return (m_PicData.frame_type == STD_VIDEO_AV1_FRAME_TYPE_INTRA_ONLY || m_PicData.frame_type == STD_VIDEO_AV1_FRAME_TYPE_KEY); }
     int32_t                 ChooseOperatingPoint();
     bool                    AddBuffertoOutputQueue(VkPicIf* pDispPic, bool bShowableFrame);

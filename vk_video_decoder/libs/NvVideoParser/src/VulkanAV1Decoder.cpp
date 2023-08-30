@@ -251,7 +251,7 @@ bool VulkanAV1Decoder::end_of_picture(const uint8_t* pdataIn, uint32_t dataSize,
     }
 
     // decode_frame_wrapup
-    UpdateFramePointers();
+    UpdateFramePointers(m_pCurrPic);
     if (m_PicData.show_frame && !bSkipped) {
         if (m_pFGSPic) {
             AddBuffertoOutputQueue(m_pFGSPic, !!showable_frame);
@@ -375,7 +375,7 @@ bool VulkanAV1Decoder::BeginPicture(VkParserPictureData* pnvpd)
     return true;
 }
 
-void VulkanAV1Decoder::UpdateFramePointers()
+void VulkanAV1Decoder::UpdateFramePointers(VkPicIf* currentPicture)
 {
     VkParserAv1PictureData* pic_info = &m_PicData;
 
@@ -391,7 +391,7 @@ void VulkanAV1Decoder::UpdateFramePointers()
                 m_pBuffers[ref_index].fgs_buffer->Release();
             }
 
-            m_pBuffers[ref_index].buffer = m_pCurrPic;
+            m_pBuffers[ref_index].buffer = currentPicture;
             m_pBuffers[ref_index].showable_frame = showable_frame;
             m_pBuffers[ref_index].fgs_buffer = showable_frame ? m_pFGSPic : nullptr;
 
@@ -1843,11 +1843,12 @@ bool VulkanAV1Decoder::ParseObuFrameHeader()
                 pic_info->segid_preskip = m_pBuffers[show_existing_frame_index].seg.last_active_id;
                 pic_info->last_active_segid = m_pBuffers[show_existing_frame_index].seg.preskip_id;
                 frame_offset = RefOrderHint[show_existing_frame_index];
+                UpdateFramePointers(m_pBuffers[show_existing_frame_index].buffer);
             } else {
                 refresh_frame_flags = 0;
+                UpdateFramePointers(m_pCurrPic);
             }
 
-            UpdateFramePointers();
             VkPicIf* pDispPic = m_pBuffers[show_existing_frame_index].fgs_buffer ? m_pBuffers[show_existing_frame_index].fgs_buffer : m_pBuffers[show_existing_frame_index].buffer;
             if (pDispPic)
                 pDispPic->AddRef();
