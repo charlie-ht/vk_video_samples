@@ -22,11 +22,6 @@
 
 #include <array>
 
-#ifdef ENABLE_AV1_DECODER
-
-#define ALIGN(value, n)         (((value) + (n) - 1) & ~((n) - 1))
-#define CLAMP(value, low, high) ((value) < (low) ? (low) : ((value) > (high) ? (high) : (value)))
-
 #define BIT32_MAX                  (0xffffffff)
 #define SINT16_MAX                  (0x7fff)
 #define SINT16_MIN                  (-0x7fff - 1)
@@ -688,6 +683,5 @@ protected:
     void                    CreatePrivateContext() {}
     void                    FreeContext() {}
 };
-#endif // ENABLE_AV1_DECODER
 
 #endif // _VULKANAV1DECODER_H_

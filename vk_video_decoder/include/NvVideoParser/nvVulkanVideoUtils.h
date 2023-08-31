@@ -18,12 +18,17 @@
 #define _NVVULKANVIDEOUTILS_H_
 
 #include <algorithm>
-#include <limits.h>
+#include <climits>
+#include <cassert>
+
+#include "VulkanVideoParserIf.h"
 
 #define ALIGN16(p) ((unsigned char*)((((size_t)(p)) + 15) & ~15))
 #define ALIGN32(p) ((unsigned char*)((((size_t)(p)) + 31) & ~31))
 #define ALIGN64(p) ((unsigned char*)((((size_t)(p)) + 63) & ~63))
 #define ALIGN128(p) ((unsigned char*)((((size_t)(p)) + 127) & ~127))
+#define ALIGN(value, n)         (((value) + (n) - 1) & ~((n) - 1))
+#define CLAMP(value, low, high) ((value) < (low) ? (low) : ((value) > (high) ? (high) : (value)))
 
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(a) ((sizeof(a) / sizeof(a[0])))

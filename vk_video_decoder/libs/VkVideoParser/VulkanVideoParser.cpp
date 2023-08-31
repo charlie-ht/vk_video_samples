@@ -33,11 +33,6 @@
 #include "VkVideoCore/VkVideoCoreProfile.h"
 #include "StdVideoPictureParametersSet.h"
 
-#if ENABLE_AV1_DECODER
-// @review: Include this in vulkan_core.h
-#include "vk_video/vulkan_video_codec_av1std_decode.h"
-#endif
-
 #include "VulkanVideoParser.h"
 
 #undef min
@@ -54,7 +49,7 @@ static const uint32_t MAX_DPB_REF_AND_SETUP_SLOTS = MAX_DPB_REF_SLOTS + 1; // pl
 
 #define COPYFIELD(pout, pin, name) pout->name = pin->name
 
-static constexpr int DEBUG_PARSER = 1;
+static constexpr int DEBUG_PARSER = 0;
 
 namespace NvVulkanDecoder
 {
@@ -895,19 +890,15 @@ VkResult VulkanVideoParser::Initialize(
 
     static const VkExtensionProperties h264StdExtensionVersion = { VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_EXTENSION_NAME, VK_STD_VULKAN_VIDEO_CODEC_H264_DECODE_SPEC_VERSION };
     static const VkExtensionProperties h265StdExtensionVersion = { VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_EXTENSION_NAME, VK_STD_VULKAN_VIDEO_CODEC_H265_DECODE_SPEC_VERSION };
-#ifdef ENABLE_AV1_DECODER
     static const VkExtensionProperties av1StdExtensionVersion = { VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_EXTENSION_NAME, VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_SPEC_VERSION };
-#endif
 
     const VkExtensionProperties* pStdExtensionVersion = NULL;
     if (m_codecType == VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR) {
         pStdExtensionVersion = &h264StdExtensionVersion;
     } else if (m_codecType == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) {
         pStdExtensionVersion = &h265StdExtensionVersion;
-#ifdef ENABLE_AV1_DECODER
     } else if (m_codecType == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
         pStdExtensionVersion = &av1StdExtensionVersion;
-#endif
     } else {
         assert(!"Unsupported codec type");
         return VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR;
@@ -2008,8 +1999,6 @@ bool VulkanVideoParser::DecodePicture(
                 std::cout << std::endl;
             }
         }
-
-#ifdef ENABLE_AV1_DECODER
     }
     else if (m_codecType == VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR) {
         const VkParserAv1PictureData* const pin = &pd->CodecSpecific.av1;
@@ -2292,7 +2281,6 @@ bool VulkanVideoParser::DecodePicture(
         av1->stdPictureInfo.pFrameHeader = &av1->frameHeader;
 
         // TODO: skip_mode_frame_idx
-#endif
     }
 
     pDecodePictureInfo->displayWidth  = m_nvsi.nDisplayWidth;

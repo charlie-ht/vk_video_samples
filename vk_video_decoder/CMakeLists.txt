@@ -310,7 +310,6 @@ else()
     endif()
 endif()
 
-add_compile_definitions(ENABLE_AV1_DECODER=1)
 option(BUILD_LOADER "Build loader" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_LAYERS "Build layers" ON)

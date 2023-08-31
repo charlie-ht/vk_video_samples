@@ -21,11 +21,10 @@
 #include "VkVideoCore/VulkanVideoCapabilities.h"
 #include "VkVideoDecoder/VkVideoDecoder.h"
 #include "nvidia_utils/vulkan/ycbcrvkinfo.h"
-
 #undef max
 #undef min
 
-#define GPU_ALIGN(x) (((x) + 0xff) & ~0xff)
+#define DEBUG_DECODER 0
 
 const uint64_t gFenceTimeout = 100 * 1000 * 1000 /* 100 mSec */;
 const uint64_t gLongTimeout  = 1000 * 1000 * 1000 /* 1000 mSec */;
@@ -122,9 +121,7 @@ int32_t VkVideoDecoder::StartVideoSequence(VkParserDetectedVideoFormat* pVideoFo
             VK_QUEUE_VIDEO_DECODE_BIT_KHR,
             VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR
             | VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR
-#ifdef ENABLE_AV1_DECODER
             | VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR
-#endif
     );
     assert(videoCodecs != VK_VIDEO_CODEC_OPERATION_NONE_KHR);
 
@@ -731,11 +728,14 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
 
 
     decodeBeginInfo.referenceSlotCount = 0;
+
+#if DEBUG_DECODER
     printf(";;; %d begin decode | %d{ ", decodeBeginInfo.pReferenceSlots[8].slotIndex, decodeBeginInfo.referenceSlotCount);
     for (uint32_t i = 0; i < decodeBeginInfo.referenceSlotCount; i++) {
 	printf("%d:%d, ", i, decodeBeginInfo.pReferenceSlots[i].slotIndex);
     }
     printf("\b\b }\n");
+#endif
     m_vkDevCtx->CmdBeginVideoCodingKHR(frameDataSlot.commandBuffer, &decodeBeginInfo);
 
     if (m_resetDecoder != false) {
@@ -767,11 +767,13 @@ int VkVideoDecoder::DecodePictureWithParameters(VkParserPerFrameDecodeParameters
                                   frameSynchronizationInfo.startQueryId, VkQueryControlFlags());
     }
 
+#if DEBUG_DECODER
     printf(";;; %d decode video | %d{ ", decodeBeginInfo.pReferenceSlots[8].slotIndex, pCurrFrameDecParams->decodeFrameInfo.referenceSlotCount);
     for (uint32_t i = 0; i < pCurrFrameDecParams->decodeFrameInfo.referenceSlotCount; i++) {
 	printf("%d:%d, ", i, pCurrFrameDecParams->decodeFrameInfo.pReferenceSlots[i].slotIndex);
     }
     printf("\b\b }\n");
+#endif
 
     m_vkDevCtx->CmdDecodeVideoKHR(frameDataSlot.commandBuffer, &pCurrFrameDecParams->decodeFrameInfo);
 

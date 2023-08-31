@@ -825,9 +825,7 @@ void VulkanVideoDecoder::end_of_stream()
 #include "nvVulkanh265ScalingList.h"
 #include "VulkanH264Decoder.h"
 #include "VulkanH265Decoder.h"
-#ifdef ENABLE_AV1_DECODER
 #include "VulkanAV1Decoder.h"
-#endif
 
 static nvParserLogFuncType gParserLogFunc = nullptr;
 static int gLogLevel = 1;
@@ -910,7 +908,6 @@ VkResult CreateVulkanVideoDecodeParser(VkVideoCodecOperationFlagBitsKHR videoCod
         nvVideoDecodeParser = nvVideoH265DecodeParser;
     }
         break;
-#ifdef ENABLE_AV1_DECODER
     case VK_VIDEO_CODEC_OPERATION_DECODE_AV1_BIT_KHR:
         if ((pStdExtensionVersion == nullptr) ||
                 (0 != strcmp(pStdExtensionVersion->extensionName, VK_STD_VULKAN_VIDEO_CODEC_AV1_DECODE_EXTENSION_NAME)) ||
@@ -922,7 +919,6 @@ VkResult CreateVulkanVideoDecodeParser(VkVideoCodecOperationFlagBitsKHR videoCod
         }
         nvVideoDecodeParser =  VkSharedBaseObj<VulkanAV1Decoder>(new VulkanAV1Decoder(videoCodecOperation));
         break;
-#endif
     case VK_VIDEO_CODEC_OPERATION_DECODE_VP9_BIT_KHR:
         // TODO: This will not work and is only here as a placeholder to get the compiler to include and link the class.
         nvVideoDecodeParser =  VkSharedBaseObj<VulkanVP9Decoder>(new VulkanVP9Decoder(videoCodecOperation));

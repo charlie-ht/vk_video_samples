@@ -20,12 +20,11 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-
-#include <stdint.h>
+#include "NvVideoParser/nvVulkanVideoUtils.h"
 #include "VulkanVideoParserIf.h"
 
-#ifdef ENABLE_AV1_DECODER
+#include <algorithm>
+#include <stdint.h>
 
 #define DEBUG_PARSER 0
 
@@ -2593,5 +2592,3 @@ bool VulkanAV1Decoder::ParseByteStream(const VkParserBitstreamPacket* pck, size_
 }
 
 const char* av1_seq_param_s::m_refClassId = "av1SpsVideoPictureParametersSet";
-
-#endif // ENABLE_AV1_DECODER
